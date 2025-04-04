@@ -1,82 +1,95 @@
 from ._builtin import Page, WaitPage
-from otree.api import Currency as c, currency_range
 from .models import Constants
 import random
-import time
-
-class Introduction(Page):
-    timeout_seconds = 100
-
-class Instructions_1(Page):
-    def is_displayed(self):
-        return self.subsession.round_number == 1
-
-class Instructions_2(Page):
-
-    def vars_for_template(self):
-        continuation_chance = int(round(Constants.delta * 100))
-        return dict(continuation_chance=continuation_chance, die_threshold_plus_one=continuation_chance+1,)
-
-    def is_displayed(self):
-        return self.subsession.round_number == 1
-
-class Instructions_3(Page):
-    def vars_for_template(self):
-        continuation_chance = int(round(Constants.delta * 100))
-        return dict(continuation_chance=continuation_chance, die_threshold_plus_one=continuation_chance+1,)
-
-    def is_displayed(self):
-        return self.subsession.round_number == 1
 
 class Decision(Page):
     form_model = 'player'
     form_fields = ['decision']
+    timeout_seconds = 60
+    timeout_submission = {'decision': 'Defect'}
 
+    def vars_for_template(self):
+        # Try to retrieve the payoff board from session vars.
+        board = self.session.vars.get('payoff_board')
+        if board is None:
+            # If not defined, create it (this should normally run only in round 1)
+            board_index = random.randint(0, 9)
+            board = {
+                'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
+                'betrayed_payoff': Constants.betrayed_payoffs[board_index],
+                'betray_payoff': Constants.betray_payoffs[board_index],
+                'both_defect_payoff': Constants.both_defect_payoffs[board_index],
+            }
+            self.session.vars['payoff_board'] = board
+        return {
+            'payoff_board': board
+        }
 
 class ResultsWaitPage(WaitPage):
     def after_all_players_arrive(self):
         for p in self.group.get_players():
             p.set_payoff()
 
-
 class Results(Page):
     def vars_for_template(self):
-        me = self.player
-        opponent = me.other_player()
+        opponent = self.player.other_player()
+        # Ensure the payoff board exists
+        board = self.session.vars.get('payoff_board')
+        if board is None:
+            board_index = random.randint(0, 9)
+            board = {
+                'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
+                'betrayed_payoff': Constants.betrayed_payoffs[board_index],
+                'betray_payoff': Constants.betray_payoffs[board_index],
+                'both_defect_payoff': Constants.both_defect_payoffs[board_index],
+            }
+            self.session.vars['payoff_board'] = board
+
         return {
-            'my_decision': me.decision,
+            'my_decision': self.player.decision,
             'opponent_decision': opponent.decision,
-            'same_choice': me.decision == opponent.decision,
-            'both_cooperate': me.decision == "Action 1" and opponent.decision == "Action 1",
-            'both_defect': me.decision == "Action 2" and opponent.decision == "Action 2",
-            'i_cooperate_he_defects':me.decision == "Action 1" and opponent.decision == "Action 2",
-            'i_defect_he_cooperates':me.decision == "Action 2" and opponent.decision == "Action 1",
+            'both_cooperate': self.player.decision == 'Cooperate' and opponent.decision == 'Cooperate',
+            'both_defect': self.player.decision == 'Defect' and opponent.decision == 'Defect',
+            'i_cooperate_he_defects': self.player.decision == 'Cooperate' and opponent.decision == 'Defect',
+            'same_choice': self.player.decision == opponent.decision,
+            'payoff_board': board
         }
 
 class EndRound(Page):
-    timeout_seconds = 100
-    def vars_for_template(self):
-        continuation_chance = int(round(Constants.delta * 100))
-        if self.subsession.round_number in Constants.last_rounds:
-            dieroll = random.randint(continuation_chance+1, 100)
-        else:
-            dieroll =  random.randint(1, continuation_chance)
-        return dict(dieroll=dieroll, continuation_chance=continuation_chance, die_threshold_plus_one=continuation_chance+1,)
+    timeout_seconds = 30
 
-    def after_all_players_arrive(self):
-        elapsed_time = time.time() - self.session.vars['start_time']
-        if Constants.time_limit == True and elapsed_time > Constants.time_limit_seconds and self.subsession.round_number in Constants.last_rounds:
-            self.session.vars['alive'] = False
+    def vars_for_template(self):
+        delta_value = self.subsession.session.vars['delta']
+        continuation_chance = int(delta_value * 100)
+        dieroll = self.group.roll_die()
+        last_rounds = self.subsession.session.vars['last_rounds']
+        current_round = self.subsession.round_number
+
+        match_continues = (
+            current_round not in last_rounds and 
+            dieroll <= continuation_chance
+        )
+
+        return {
+            'dieroll': dieroll,
+            'continuation_chance': continuation_chance,
+            'match_continues': match_continues,
+            'is_last_round': current_round in last_rounds,
+            'delta_value': delta_value
+        }
+
+    def before_next_page(self):
+        delta_value = self.subsession.session.vars['delta']
+        continuation_chance = int(delta_value * 100)
+        if (self.group.dieroll > continuation_chance or 
+            self.subsession.round_number in self.subsession.session.vars['last_rounds']):
+            self.participant.vars['match_ended'] = True
 
 class End(Page):
     def is_displayed(self):
-        return self.session.vars['alive'] == False or self.subsession.round_number == Constants.last_round
+        return self.participant.vars.get('match_ended', False)
 
 page_sequence = [
-    #Introduction,
-    Instructions_1,
-    Instructions_2,
-    Instructions_3,
     Decision,
     ResultsWaitPage,
     Results,

@@ -1,0 +1,41 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    Match {{ subsession.match_number }}, Round {{ subsession.round_in_match }} - Results
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+    <div class="card-body">
+        {% if payoff_board %}
+            {% if both_cooperate %}
+                <div class="alert alert-success">
+                    <h5>Both cooperated</h5>
+                    <p>You both earned {{ payoff_board.both_cooperate_payoff }} points.</p>
+                </div>
+            {% elif both_defect %}
+                <div class="alert alert-warning">
+                    <h5>Both defected</h5>
+                    <p>You both earned {{ payoff_board.both_defect_payoff }} points.</p>
+                </div>
+            {% elif i_cooperate_he_defects %}
+                <div class="alert alert-danger">
+                    <h5>You cooperated, they defected</h5>
+                    <p>You earned {{ payoff_board.betrayed_payoff }} points.</p>
+                    <p>They earned {{ payoff_board.betray_payoff }} points.</p>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <h5>You defected, they cooperated</h5>
+                    <p>You earned {{ payoff_board.betray_payoff }} points.</p>
+                    <p>They earned {{ payoff_board.betrayed_payoff }} points.</p>
+                </div>
+            {% endif %}
+        {% else %}
+            <p>Error: Payoff board not defined.</p>
+        {% endif %}
+    </div>
+</div>
+{% next_button %}
+{% endblock %}

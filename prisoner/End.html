@@ -1,0 +1,28 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}Experiment Complete{% endblock %}
+
+{% block content %}
+
+<div class="card">
+    <div class="card-body text-center">
+        <h3 class="card-title">Thank you for participating!</h3>
+        <div class="card-text">
+            <p>Your session has concluded.</p>
+            <p>Please wait quietly for further instructions.</p>
+            <p>Your total earnings: <strong>{{ participant.payoff }}</strong></p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block styles %}
+<style>
+    .card {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}

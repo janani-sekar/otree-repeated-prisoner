@@ -1,11 +1,22 @@
 # oTree App for Infinitely Repeated Prisoner's Dilemma
-### Salvatore Nunnari, Bocconi University, salvatore.nunnari@unibocconi.it
 
-This repository contains one oTree app:
+## Installation Steps
+Navigate to/make sure location is the root directory `(otree_repeated_prisoner)`
 
-* **prisoner**: infinitely repeated prisoner's dilemma (with discount factor implemented as random termination rule) as in the experiments by Dal Bò, Pedro and Guillaume R. Fréchette (2011), "The Evolution of Cooperation in Infinitely Repeated Games: Experimental Evidence", American Economic Review, 101(1): 411-429. 
+Create a Python 3.11 virtual environment:
+```python3.11 -m venv .venv```
 
-If "time_limit==False", the app implements "num_matches" instances of an infinitely repeated game. If "time_limit==True", the app implements as many instances of an infinitely repeated game as subjects are able to play in "time_limit_seconds" (as in Dal Bò and Fréchette 2011, where the last match of each session was the first match to end after 60 minutes from the beginning of the experiment). 
+Activate the virtual environment:
+```source .venv/bin/activate```
 
-This app was developed with oTree version 2.5.5.
+Check that the version is correct (should say Python 3.11)
+```python --version```
+
+Now that the virtual environment is active, install requirements to run the OTree app.
+```pip install -r requirements.txt```
+
+Now, we can start the local testing server:
+```otree devserver```
+
+
 

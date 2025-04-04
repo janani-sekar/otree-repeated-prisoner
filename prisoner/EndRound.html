@@ -1,0 +1,36 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    Match {{ subsession.match_number }}, Round {{ subsession.round_in_match }} - Continuation
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-4">
+    <div class="card-body text-center">
+        <h4>Die Roll: <span class="badge bg-primary">{{ dieroll }}</span></h4>
+        <p>Needed ≤ {{ continuation_chance }} to continue</p>
+        
+        {% if match_continues %}
+            <div class="alert alert-success mt-3">
+                <h4>Match continues!</h4>
+                <p>The die roll was low enough to continue.</p>
+            </div>
+        {% else %}
+            <div class="alert alert-danger mt-3">
+                {% if is_last_round %}
+                    <h4>Final round reached</h4>
+                    <p>This match has completed all rounds.</p>
+                {% else %}
+                    <h4>Match ends</h4>
+                    <p>The die roll was too high to continue.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% next_button %}
+
+{% endblock %}

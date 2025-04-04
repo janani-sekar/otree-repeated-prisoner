@@ -1,0 +1,77 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    Match {{ subsession.match_number }}, Round {{ subsession.round_in_match }} - Decision
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" type="text/css" href="{% static 'global/matrix.css' %}">
+<style>
+    .highlight-row:hover td {
+        background-color: #f8f9fa;
+    }
+    .btn-decision {
+        min-width: 150px;
+        margin: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-group">
+    <table class="table table-bordered text-center" style="width: auto; margin: auto">
+        <tr>
+            <th colspan="2" rowspan="2"></th>
+            <th colspan="2">The Other Participant</th>
+        </tr>
+        <tr>
+            <th>Cooperate</th>
+            <th>Defect</th>
+        </tr>
+        <tr class="highlight-row">
+            <th rowspan="2"><span>You</span></th>
+            <td>
+                <button name="decision" value="Cooperate" class="btn btn-primary btn-decision">
+                    Cooperate
+                </button>
+            </td>
+            <td>
+                {% if payoff_board %}
+                    {{ payoff_board.both_cooperate_payoff }}, {{ payoff_board.both_cooperate_payoff }}
+                {% else %}
+                    N/A, N/A
+                {% endif %}
+            </td>
+            <td>
+                {% if payoff_board %}
+                    {{ payoff_board.betrayed_payoff }}, {{ payoff_board.betray_payoff }}
+                {% else %}
+                    N/A, N/A
+                {% endif %}
+            </td>
+        </tr>
+        <tr class="highlight-row">
+            <td>
+                <button name="decision" value="Defect" class="btn btn-primary btn-decision">
+                    Defect
+                </button>
+            </td>
+            <td>
+                {% if payoff_board %}
+                    {{ payoff_board.betray_payoff }}, {{ payoff_board.betrayed_payoff }}
+                {% else %}
+                    N/A, N/A
+                {% endif %}
+            </td>
+            <td>
+                {% if payoff_board %}
+                    {{ payoff_board.both_defect_payoff }}, {{ payoff_board.both_defect_payoff }}
+                {% else %}
+                    N/A, N/A
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+</div>
+{% endblock %}
