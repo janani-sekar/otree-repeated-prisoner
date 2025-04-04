@@ -2,16 +2,14 @@
 {% load otree static %}
 
 {% block title %}
-    End of Round {{ current_round }}
+    Game Ended Early
 {% endblock %}
 
 {% block content %}
 <div class="card mb-4">
     <div class="card-body text-center">
-        <h4>Round {{ current_round }} </h4>
-        <div class="{{ message_class }}">
-            <p>{{ message }}</p>
-        </div>
+        <h4>Game Ended Early</h4>
+        <p>{{ timeout_message }}</p>
         {% next_button %}
     </div>
 </div>

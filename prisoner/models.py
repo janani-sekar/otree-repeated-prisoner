@@ -26,19 +26,18 @@ class Constants(BaseConstants):
 
 
 class Subsession(BaseSubsession):
-    # Field to store the sampled delta (continuation probability)
     delta_value = models.FloatField(null=True)
     match_number = models.IntegerField()
     round_in_match = models.IntegerField()
+    # New field: store total predetermined rounds in the database.
+    total_rounds = models.IntegerField()
 
     def creating_session(self):
         if self.round_number == 1:
-            # Sample delta from the set [0.1, 0.2, ..., 0.9]
             delta_value = random.choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
             self.session.vars['delta'] = delta_value
             self.delta_value = delta_value
 
-            # Sample a board index from 0 to 9
             board_index = random.randint(0, 9)
             payoff_board = {
                 'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
@@ -48,57 +47,48 @@ class Subsession(BaseSubsession):
             }
             self.session.vars['payoff_board'] = payoff_board
 
-            # Calculate random match durations using the sampled delta_value.
-            match_duration = np.random.geometric(
-                p=1 - delta_value,
-                size=Constants.num_matches
-            ).tolist()
+            match_duration = np.random.geometric(p=1 - delta_value, size=Constants.num_matches).tolist()
             last_rounds = np.cumsum(match_duration).tolist()
             first_rounds = [1] + [last_rounds[k - 1] + 1 for k in range(1, len(match_duration))]
 
-            # Store computed values in session variables.
+            actual_num_rounds = int(last_rounds[-1])
             self.session.vars.update({
                 'match_duration': match_duration,
                 'last_rounds': last_rounds,
                 'first_rounds': first_rounds,
-                'actual_num_rounds': int(last_rounds[-1]),
+                'actual_num_rounds': actual_num_rounds,
                 'start_time': time.time(),
                 'alive': True
             })
+            self.total_rounds = actual_num_rounds
         else:
-            # For rounds >1, retrieve the delta value from session vars and store it.
             self.delta_value = self.session.vars['delta']
 
-        # If this round is beyond the actual intended rounds, assign safe defaults and exit early.
         if self.round_number > self.session.vars['actual_num_rounds']:
             self.match_number = 0
             self.round_in_match = 0
             return
 
-        # Determine the current match number.
         for k, last_round in enumerate(self.session.vars['last_rounds'], start=1):
             if self.round_number <= last_round:
                 self.match_number = k
                 break
 
-        self.round_in_match = (
-            self.round_number - 
-            self.session.vars['first_rounds'][self.match_number - 1] + 1
-        )
+        self.round_in_match = (self.round_number - self.session.vars['first_rounds'][self.match_number - 1] + 1)
 
-        # Group management: randomize groups at the start of a new match, otherwise copy previous round.
         if self.round_number in self.session.vars['first_rounds']:
             self.group_randomly()
         else:
             self.group_like_round(self.round_number - 1)
 
-class Group(BaseGroup):
-    dieroll = models.IntegerField(initial=-1)  # -1 means not rolled yet
 
+class Group(BaseGroup):
+    dieroll = models.IntegerField(initial=-1)
     def roll_die(self):
         if self.dieroll == -1:
             self.dieroll = random.randint(1, 100)
         return self.dieroll
+
 
 class Player(BasePlayer):
     decision = models.StringField(
@@ -106,11 +96,18 @@ class Player(BasePlayer):
         widget=widgets.RadioSelect,
         label="Your decision:"
     )
+    # New field: record if a timeout occurred.
+    timeout_occurred = models.BooleanField(initial=False)
 
     def other_player(self):
         return self.get_others_in_group()[0]
 
     def set_payoff(self):
+        # If either player did not decide, assign 0.
+        if self.decision == "" or self.other_player().decision == "":
+            self.payoff = 0
+            return
+
         board = self.session.vars['payoff_board']
         payoff_matrix = {
             'Cooperate': {

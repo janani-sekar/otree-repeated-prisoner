@@ -19,6 +19,11 @@
 {% endblock %}
 
 {% block content %}
+<!-- Inline warning message (Bootstrap danger style) placed above the payoff matrix -->
+<div id="warning" class="alert alert-danger" style="display: none;">
+    Warning: You have only 60 seconds remaining. If no decision is made by the end of 90 seconds, the game will end for everyone.
+</div>
+
 <div class="form-group">
     <table class="table table-bordered text-center" style="width: auto; margin: auto">
         <tr>
@@ -74,4 +79,16 @@
         </tr>
     </table>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Show the warning message after 30 seconds (30000ms).
+    setTimeout(function(){
+        var warningDiv = document.getElementById('warning');
+        if (warningDiv) {
+            warningDiv.style.display = 'block';
+        }
+    }, 30000);
+</script>
 {% endblock %}

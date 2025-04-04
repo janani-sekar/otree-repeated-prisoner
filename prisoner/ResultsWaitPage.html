@@ -2,17 +2,14 @@
 {% load otree static %}
 
 {% block title %}
-    End of Round {{ current_round }}
+    Please Wait
 {% endblock %}
 
 {% block content %}
 <div class="card mb-4">
     <div class="card-body text-center">
-        <h4>Round {{ current_round }} </h4>
-        <div class="{{ message_class }}">
-            <p>{{ message }}</p>
-        </div>
-        {% next_button %}
+        <h4>Waiting for the other participant...</h4>
+        <p>Please wait until both participants have made their decisions.</p>
     </div>
 </div>
 {% endblock %}

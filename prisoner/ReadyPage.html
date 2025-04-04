@@ -2,16 +2,14 @@
 {% load otree static %}
 
 {% block title %}
-    End of Round {{ current_round }}
+    Task Ready
 {% endblock %}
 
 {% block content %}
 <div class="card mb-4">
     <div class="card-body text-center">
-        <h4>Round {{ current_round }} </h4>
-        <div class="{{ message_class }}">
-            <p>{{ message }}</p>
-        </div>
+        <h4>Another participant has joined.</h4>
+        <p>The task will begin on the next screen.</p>
         {% next_button %}
     </div>
 </div>
