@@ -1,5 +1,5 @@
 # oTree App for Infinitely Repeated Prisoner's Dilemma
-
+adapted from https://github.com/snunnari/otree_repeated_prisoner/tree/master
 ## Installation Steps
 Navigate to/make sure location is the root directory `(otree_repeated_prisoner)`
 
