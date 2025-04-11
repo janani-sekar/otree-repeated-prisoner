@@ -1,13 +1,8 @@
 from os import environ
 
 SESSION_CONFIGS = [
-    dict(
-        name='prisoner',
-        display_name="Repeated Prisoner's Dilemma",
-        app_sequence=['prisoner'],  # Use ONLY apps that exist
-        num_demo_participants=2,
-    ),
     dict(name='prolific_study', 
+        display_name="Repeated Prisoner's Dilemma Prolific",
         app_sequence=['prisoner'], 
         num_demo_participants=2, 
         completionlink='https://app.prolific.co/submissions/complete?cc=11111111',
@@ -15,7 +10,7 @@ SESSION_CONFIGS = [
 ]
 
 SESSION_CONFIG_DEFAULTS = dict(
-    real_world_currency_per_point=1.00, 
+    real_world_currency_per_point=.01, 
     participation_fee=0.00, 
     doc="",
     # Modern additions:
