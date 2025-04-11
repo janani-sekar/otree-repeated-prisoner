@@ -6,7 +6,12 @@ SESSION_CONFIGS = [
         display_name="Repeated Prisoner's Dilemma",
         app_sequence=['prisoner'],  # Use ONLY apps that exist
         num_demo_participants=2,
-    )
+    ),
+    dict(name='prolific_study', 
+        app_sequence=['prisoner'], 
+        num_demo_participants=2, 
+        completionlink='https://app.prolific.co/submissions/complete?cc=11111111',
+    ),
 ]
 
 SESSION_CONFIG_DEFAULTS = dict(
@@ -25,18 +30,16 @@ USE_POINTS = True
 
 ROOMS = [
 dict(
-    name='prolific_study',
-    display_name='prolific_study',
-    participant_label_file='_rooms/Prolific_1.txt',
+    name='Prolific_1',
+    display_name='Prolific_1'
 ),
 dict(
     name='live_demo',
-    display_name='Room for Live Demo (No Participant Labels)',
+    display_name='Room for Live Demo (No Participant Labels)'
 )
 ]
 
 ADMIN_USERNAME = 'admin'
-# for security, best to set admin password in an environment variable
 ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
 
 # don't share this with anybody.

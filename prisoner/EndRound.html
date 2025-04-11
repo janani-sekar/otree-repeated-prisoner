@@ -7,12 +7,13 @@
 
 {% block content %}
 <div class="card mb-4">
-    <div class="card-body text-center">
-        <h4>Round {{ current_round }} </h4>
-        <div class="{{ message_class }}">
-            <p>{{ message }}</p>
-        </div>
-        {% next_button %}
+  <div class="card-body text-center">
+    <h4>Round {{ current_round }} of {{ actual_num_rounds }}</h4>
+    <div class="{{ message_class }}">
+      <p>{{ message }}</p>
     </div>
+    <p>This page will auto-advance in 30 seconds if you do not click "Next".</p>
+    {% next_button %}
+  </div>
 </div>
 {% endblock %}

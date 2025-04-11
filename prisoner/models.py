@@ -29,15 +29,22 @@ class Subsession(BaseSubsession):
     delta_value = models.FloatField(null=True)
     match_number = models.IntegerField()
     round_in_match = models.IntegerField()
-    # New field: store total predetermined rounds in the database.
     total_rounds = models.IntegerField()
+    # Instead of one JSON field for the game matrix,
+    # we now store each payoff in its own model field.
+    game_payoff_cooperate_cooperate = models.IntegerField(null=True)
+    game_payoff_betrayed = models.IntegerField(null=True)
+    game_payoff_betray = models.IntegerField(null=True)
+    game_payoff_both_defect = models.IntegerField(null=True)
 
     def creating_session(self):
         if self.round_number == 1:
+            # Sample delta from [0.1, 0.2, ..., 0.9]
             delta_value = random.choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
             self.session.vars['delta'] = delta_value
             self.delta_value = delta_value
 
+            # Sample a board index (0 to 9) and build the payoff board.
             board_index = random.randint(0, 9)
             payoff_board = {
                 'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
@@ -47,10 +54,34 @@ class Subsession(BaseSubsession):
             }
             self.session.vars['payoff_board'] = payoff_board
 
+            # Save each payoff from the matrix into its own field for export.
+            self.game_payoff_cooperate_cooperate = payoff_board['both_cooperate_payoff']
+            self.game_payoff_betrayed = payoff_board['betrayed_payoff']
+            self.game_payoff_betray = payoff_board['betray_payoff']
+            self.game_payoff_both_defect = payoff_board['both_defect_payoff']
+
+            # (Optional) You can compute a full game matrix here if needed at runtime.
+            # For example (this is only stored in session and not in a model field):
+            game_matrix = {
+                'Cooperate': {
+                    'Cooperate': {'self': payoff_board['both_cooperate_payoff'],
+                                   'other': payoff_board['both_cooperate_payoff']},
+                    'Defect':    {'self': payoff_board['betrayed_payoff'],
+                                   'other': payoff_board['betray_payoff']}
+                },
+                'Defect': {
+                    'Cooperate': {'self': payoff_board['betray_payoff'],
+                                   'other': payoff_board['betrayed_payoff']},
+                    'Defect':    {'self': payoff_board['both_defect_payoff'],
+                                   'other': payoff_board['both_defect_payoff']}
+                }
+            }
+            self.session.vars['game_matrix'] = game_matrix
+
+            # Calculate match durations using a geometric distribution with p = (1 - delta).
             match_duration = np.random.geometric(p=1 - delta_value, size=Constants.num_matches).tolist()
             last_rounds = np.cumsum(match_duration).tolist()
             first_rounds = [1] + [last_rounds[k - 1] + 1 for k in range(1, len(match_duration))]
-
             actual_num_rounds = int(last_rounds[-1])
             self.session.vars.update({
                 'match_duration': match_duration,
@@ -60,6 +91,7 @@ class Subsession(BaseSubsession):
                 'start_time': time.time(),
                 'alive': True
             })
+            # Save the predetermined total number of rounds.
             self.total_rounds = actual_num_rounds
         else:
             self.delta_value = self.session.vars['delta']
@@ -74,7 +106,7 @@ class Subsession(BaseSubsession):
                 self.match_number = k
                 break
 
-        self.round_in_match = (self.round_number - self.session.vars['first_rounds'][self.match_number - 1] + 1)
+        self.round_in_match = self.round_number - self.session.vars['first_rounds'][self.match_number - 1] + 1
 
         if self.round_number in self.session.vars['first_rounds']:
             self.group_randomly()
@@ -91,23 +123,23 @@ class Group(BaseGroup):
 
 
 class Player(BasePlayer):
+    prolific_id = models.StringField(initial="")
+    
     decision = models.StringField(
         choices=[['Cooperate', 'Cooperate'], ['Defect', 'Defect']],
         widget=widgets.RadioSelect,
         label="Your decision:"
     )
-    # New field: record if a timeout occurred.
+    # Field to record if a timeout occurred.
     timeout_occurred = models.BooleanField(initial=False)
 
     def other_player(self):
         return self.get_others_in_group()[0]
 
     def set_payoff(self):
-        # If either player did not decide, assign 0.
-        if self.decision == "" or self.other_player().decision == "":
+        if not self.decision or not self.other_player().decision:
             self.payoff = 0
             return
-
         board = self.session.vars['payoff_board']
         payoff_matrix = {
             'Cooperate': {

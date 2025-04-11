@@ -4,7 +4,6 @@
 {% block title %}Experiment Complete{% endblock %}
 
 {% block content %}
-
 <div class="card">
     <div class="card-body text-center">
         <h3 class="card-title">Thank you for participating!</h3>
@@ -15,7 +14,16 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+<script>
+    // Retrieve the completion link from js_vars and redirect upon window load.
+    let completionlink = "{{ js_vars.completionlink }}";
+    window.onload = function(){
+         window.location.href = completionlink;
+    }
+</script>
 {% endblock %}
 
 {% block styles %}
