@@ -12,7 +12,20 @@
     <div class="{{ message_class }}">
       <p>{{ message }}</p>
     </div>
-    <p>This page will auto-advance in 30 seconds if you do not click "Next".</p>
+
+    {% if not is_final_round %}
+      <p>
+        We rolled a 100‑sided die and the result was 
+        <b>above {{ die_roll_value }}</b>, so the game continues.
+      </p>
+    {% else %}
+      <p>
+        We rolled a 100‑sided die and the result was 
+        <b>below {{ die_roll_value }}</b>, so the game ends here.
+      </p>
+    {% endif %}
+
+    <p>This page will auto‑advance in 30 seconds if you do not click “Next.”</p>
     {% next_button %}
   </div>
 </div>

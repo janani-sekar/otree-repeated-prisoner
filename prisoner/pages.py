@@ -57,6 +57,7 @@ class Decision(Page):
     def vars_for_template(self):
         return {
             'delta':           self.player.participant.vars['delta'],
+            'die_roll_value':  100-int(self.player.participant.vars['delta']*100),
             'match_duration':  self.player.participant.vars['match_duration'],
             'payoff_board':    self.player.participant.vars['payoff_board'],
             'round_number':    self.round_number,
@@ -108,14 +109,19 @@ class EndRound(Page):
         else:
             msg, cls = "Round result pending.", "alert alert-secondary"
 
+        md = self.player.participant.vars['match_duration']
+        is_final = (self.round_number == md)
+
         return {
-            'current_round':   self.round_number,
-            'match_duration':  self.player.participant.vars['match_duration'],
-            'your_decision':   d1,
-            'other_decision':  d2,
-            'round_payoff':    self.player.payoff,
-            'message':         msg,
-            'message_class':   cls,
+            'current_round':  self.round_number,
+            'match_duration': md,
+            'die_roll_value': 100 - int(self.player.participant.vars['delta'] * 100),
+            'your_decision':  d1,
+            'other_decision': d2,
+            'round_payoff':   self.player.payoff,
+            'message':        msg,
+            'message_class':  cls,
+            'is_final_round': is_final,
         }
 
     def is_displayed(self):
