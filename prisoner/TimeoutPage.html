@@ -1,0 +1,16 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    Game Ended
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4">
+  <div class="card-body text-center">
+    <h4>The game ended early!</h4>
+    <p>You or your opponent failed to make a decision in time, so the game ended.</p>
+    {% next_button %}
+  </div>
+</div>
+{% endblock %}

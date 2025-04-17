@@ -1,190 +1,155 @@
+from otree.api import *
+import numpy as np
+import random
 from ._builtin import Page, WaitPage
 from .models import Constants
-import random
+from scipy.stats import geom
 
-# -------------------------------------------------------------------
-# GroupWaitPage: Only used in round 1, to let participants join the session.
-# -------------------------------------------------------------------
-class GroupWaitPage(WaitPage):
-    body_text = "Waiting for another participant to join the game..."
+class ArrivalWaitPage(WaitPage):
     group_by_arrival_time = True
-    
-    def is_displayed(self):
-        # Show this wait page ONLY in round 1.
-        return self.subsession.round_number == 1
 
-# -------------------------------------------------------------------
-# ReadyPage: shown only in round 1, also extracts the Prolific ID.
-# -------------------------------------------------------------------
+    def is_displayed(self):
+        return self.round_number == 1
+
+    def after_all_players_arrive(self):
+        # 1) Choose delta and payoff board on the Group (for export)
+        self.group.delta_value = random.choice([
+            0.05, 0.10, 0.15, 0.20, 0.25,
+            0.30, 0.35, 0.40, 0.45, 0.50,
+            0.55, 0.60, 0.65, 0.70, 0.75,
+            0.80, 0.85, 0.90, 0.95
+        ])
+        idx = random.randint(0, 9)
+        self.group.game_payoff_cooperate_cooperate = Constants.both_cooperate_payoffs[idx]
+        self.group.game_payoff_betrayed            = Constants.betrayed_payoffs[idx]
+        self.group.game_payoff_betray              = Constants.betray_payoffs[idx]
+        self.group.game_payoff_both_defect         = Constants.both_defect_payoffs[idx]
+
+        # 2) Draw match duration once using geometric(delta)
+        md = int(np.random.geometric(p=1 - self.group.delta_value))
+        max_md = int(geom(p=0.05).ppf(0.9))
+        if md > max_md:
+            md = max_md
+        self.group.match_duration = md
+
+        # 3) Propagate everything into participant.vars
+        for p in self.group.get_players():
+            p.participant.vars['delta']           = self.group.delta_value
+            p.participant.vars['match_duration']  = md
+            p.participant.vars['payoff_board']    = {
+                'both_cooperate_payoff': self.group.game_payoff_cooperate_cooperate,
+                'betrayed_payoff':        self.group.game_payoff_betrayed,
+                'betray_payoff':          self.group.game_payoff_betray,
+                'both_defect_payoff':     self.group.game_payoff_both_defect,
+            }
+            p.participant.vars['timed_out'] = False
+
+
 class ReadyPage(Page):
-    timeout_seconds = 30
     def is_displayed(self):
-        return self.subsession.round_number == 1
-    def vars_for_template(self):
-        return {}
-    def before_next_page(self, timeout_happened=False):
-        self.player.prolific_id = self.participant.label
+        return self.round_number == 1
 
-# -------------------------------------------------------------------
-# DecisionSyncPage: Wait page to ensure both players click "Next" at start.
-# If you only want it in round 1, add an is_displayed method here too.
-# -------------------------------------------------------------------
-class DecisionSyncPage(WaitPage):
-    body_text = "Waiting for both participants to click next. Page will autoadvance in 30 seconds."
-
-    # If you want this only in round 1, uncomment this:
-    # def is_displayed(self):
-    #     return self.subsession.round_number == 1
-
-# -------------------------------------------------------------------
-# Decision Page: 90-second timer with an inline warning after 30s.
-# -------------------------------------------------------------------
 class Decision(Page):
     form_model = 'player'
     form_fields = ['decision']
-    timeout_seconds = 90
-    
+    timeout_seconds = 60
+
     def vars_for_template(self):
-        board = self.session.vars.get('payoff_board')
-        if board is None:
-            board_index = random.randint(0, 9)
-            board = {
-                'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
-                'betrayed_payoff': Constants.betrayed_payoffs[board_index],
-                'betray_payoff': Constants.betray_payoffs[board_index],
-                'both_defect_payoff': Constants.both_defect_payoffs[board_index],
-            }
-            self.session.vars['payoff_board'] = board
-            game_matrix = {
-                'Cooperate': {
-                    'Cooperate': {'self': board['both_cooperate_payoff'], 'other': board['both_cooperate_payoff']},
-                    'Defect':    {'self': board['betrayed_payoff'],       'other': board['betray_payoff']}
-                },
-                'Defect': {
-                    'Cooperate': {'self': board['betray_payoff'],         'other': board['betrayed_payoff']},
-                    'Defect':    {'self': board['both_defect_payoff'],    'other': board['both_defect_payoff']}
-                }
-            }
-            self.session.vars['game_matrix'] = game_matrix
-        return {'payoff_board': board}
+        return {
+            'delta':           self.player.participant.vars['delta'],
+            'match_duration':  self.player.participant.vars['match_duration'],
+            'payoff_board':    self.player.participant.vars['payoff_board'],
+            'round_number':    self.round_number,
+        }
 
-    def before_next_page(self):
-        if not self.player.decision:
-            self.player.timeout_occurred = True
-            for p in self.group.get_players():
-                p.participant.vars['match_ended'] = True
-
-# -------------------------------------------------------------------
-# TimeoutNotice Page: if a player timed out on the Decision page.
-# -------------------------------------------------------------------
-class TimeoutNotice(Page):
     def is_displayed(self):
-        return self.participant.vars.get('match_ended', False)
-    def vars_for_template(self):
-        return {'timeout_message': "Either you or your opponent failed to make a decision on time, so the game ended early."}
+        return (self.round_number <=
+                self.player.participant.vars['match_duration'])
 
-# -------------------------------------------------------------------
-# ResultsWaitPage: Wait page for payoff calculation.
-# -------------------------------------------------------------------
-class ResultsWaitPage(WaitPage):
-    body_text = "Waiting for the other participant to make a decision."
+class DecisionWaitPage(WaitPage):
+    body_text = "Waiting for the other participant to select a decision..."
+
     def is_displayed(self):
-        return not self.participant.vars.get('match_ended', False)
+        return (self.round_number <=
+                self.player.participant.vars['match_duration'])
+
     def after_all_players_arrive(self):
+        # if anyone timed out (decision still None), end the match for both
+        timed_out = any(not p.decision for p in self.group.get_players())
+        if timed_out:
+            for p in self.group.get_players():
+                p.participant.vars['timed_out'] = True
+                # truncate the match so we’ll go straight to End
+                p.participant.vars['match_duration'] = self.round_number
+            return
+        # otherwise, compute payoffs as usual
         for p in self.group.get_players():
             p.set_payoff()
 
-# -------------------------------------------------------------------
-# Results Page: displays outcomes; auto-advances after 30 seconds.
-# -------------------------------------------------------------------
-class Results(Page):
-    timeout_seconds = 30
+class TimeoutPage(Page):
+    """Shown if either player missed the 90s timer."""
     def is_displayed(self):
-        return not self.participant.vars.get('match_ended', False)
-    def vars_for_template(self):
-        opponent = self.player.other_player()
-        board = self.session.vars.get('payoff_board')
-        if board is None:
-            board_index = random.randint(0, 9)
-            board = {
-                'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
-                'betrayed_payoff':       Constants.betrayed_payoffs[board_index],
-                'betray_payoff':         Constants.betray_payoffs[board_index],
-                'both_defect_payoff':    Constants.both_defect_payoffs[board_index],
-            }
-            self.session.vars['payoff_board'] = board
+        return self.player.participant.vars.get('timed_out', False)
 
-        return {
-            'my_decision': self.player.decision,
-            'opponent_decision': opponent.decision,
-            'both_cooperate': self.player.decision == 'Cooperate' and opponent.decision == 'Cooperate',
-            'both_defect':    self.player.decision == 'Defect' and opponent.decision == 'Defect',
-            'i_cooperate_he_defects': self.player.decision == 'Cooperate' and opponent.decision == 'Defect',
-            'same_choice': self.player.decision == opponent.decision,
-            'payoff_board': board,
-            'next_button_auto': 30
-        }
-
-# -------------------------------------------------------------------
-# EndRound Page: static message based on the precomputed match length; auto-advance after 30s.
-# -------------------------------------------------------------------
 class EndRound(Page):
     timeout_seconds = 30
+
     def vars_for_template(self):
-        delta_value = self.subsession.session.vars['delta']
-        actual_num_rounds = self.subsession.session.vars['actual_num_rounds']
-        current_round = self.subsession.round_number
-        threshold = (1 - delta_value) * 100
-        if current_round < actual_num_rounds:
-            message = f"We simulated a die roll and the value was greater than {threshold:.0f}, so the game continues."
-            message_class = "alert alert-success"
+        d1 = self.player.decision
+        d2 = self.player.other_player().decision
+        if d1 == 'Cooperate' and d2 == 'Cooperate':
+            msg, cls = "Both cooperated!", "alert alert-success"
+        elif d1 == 'Defect' and d2 == 'Defect':
+            msg, cls = "Both defected!", "alert alert-danger"
+        elif d1 == 'Cooperate' and d2 == 'Defect':
+            msg, cls = "You cooperated while your partner defected.", "alert alert-warning"
+        elif d1 == 'Defect' and d2 == 'Cooperate':
+            msg, cls = "You defected while your partner cooperated.", "alert alert-info"
         else:
-            message = f"We simulated a die roll and the value was less than or equal to {threshold:.0f}, so the match has ended."
-            message_class = "alert alert-danger"
+            msg, cls = "Round result pending.", "alert alert-secondary"
+
         return {
-            'delta_value':       delta_value,
-            'actual_num_rounds': actual_num_rounds,
-            'current_round':     current_round,
-            'message':           message,
-            'message_class':     message_class,
-            'next_button_auto':  30
+            'current_round':   self.round_number,
+            'match_duration':  self.player.participant.vars['match_duration'],
+            'your_decision':   d1,
+            'other_decision':  d2,
+            'round_payoff':    self.player.payoff,
+            'message':         msg,
+            'message_class':   cls,
         }
-    def before_next_page(self):
-        actual_num_rounds = self.subsession.session.vars['actual_num_rounds']
-        current_round = self.subsession.round_number
-        if current_round >= actual_num_rounds:
-            self.participant.vars['match_ended'] = True
 
-# -------------------------------------------------------------------
-# RoundFinishWaitPage: wait page after EndRound in subsequent rounds.
-# -------------------------------------------------------------------
-class RoundFinishWaitPage(WaitPage):
-    body_text = "Waiting for the other participant to finish viewing results from the round..."
     def is_displayed(self):
-        # Only appear for rounds beyond the first, if you want a separate message from GroupWaitPage.
-        return self.subsession.round_number > 1
+        timed_out = self.player.participant.vars.get('timed_out', False)
+        md        = self.player.participant.vars['match_duration']
+        return (not timed_out) and (self.round_number <= md)
 
-# -------------------------------------------------------------------
-# End Page: final static end screen.
-# -------------------------------------------------------------------
+class RoundSyncWaitPage(WaitPage):
+    body_text = "Waiting for the other participant to finish reviewing the round results..."
+
+    def is_displayed(self):
+            timed_out = self.player.participant.vars.get('timed_out', False)
+            md        = self.player.participant.vars['match_duration']
+            return (not timed_out) and (self.round_number < md)
+
 class End(Page):
-    def is_displayed(self):
-        return self.participant.vars.get('match_ended', False)
-    def vars_for_template(self):
-        return {'end_message': "Game ended."}
+    timeout_seconds = 30
 
-# -------------------------------------------------------------------
-# Page Sequence
-# -------------------------------------------------------------------
+    def vars_for_template(self):
+        return {
+            'current_round':   self.round_number,
+            'match_duration':  self.player.participant.vars['match_duration'],
+        }
+
+    def is_displayed(self):
+        return self.round_number == self.player.participant.vars['match_duration']
+
 page_sequence = [
-    GroupWaitPage,       # Only round 1
-    ReadyPage,           # Only round 1
-    DecisionSyncPage,    # Shown each round by default; comment out is_displayed if you only want round 1
+    ArrivalWaitPage,
+    ReadyPage,
     Decision,
-    TimeoutNotice,
-    ResultsWaitPage,
-    Results,
+    DecisionWaitPage,
+    TimeoutPage,
     EndRound,
-    RoundFinishWaitPage, # Shown in subsequent rounds if one player finishes EndRound early
-    End
+    RoundSyncWaitPage,
+    End,
 ]

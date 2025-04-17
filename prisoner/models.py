@@ -1,121 +1,43 @@
 from otree.api import *
-import numpy as np
 import random
-import time
 
 doc = """
-Repeated Prisoner's Dilemma with random continuation.
-The continuation probability (delta) is sampled from [0.1, 0.2, …, 0.9].
-A fixed payoff board is chosen at the start.
-There are 10 possible boards; the board is determined by selecting the same index from 4 payoff lists.
+Repeated Prisoner's Dilemma where each pair is fixed for the entire session.
+Each pair (group) is assigned its own continuation probability (delta),
+match duration and payoff board in round 1, which remain unchanged throughout the session.
+Players are paired by their arrival time via an asynchronous Wait Page.
 """
 
 class Constants(BaseConstants):
     name_in_url = 'prisoner'
     players_per_group = 2
-    num_rounds = 100  # placeholder; actual rounds come from session vars
-    num_matches = 1
-
-    # Lists for the 10 possible boards (index 0 to 9)
-    both_cooperate_payoffs = [28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
-    betrayed_payoffs = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26]
-    betray_payoffs = [40, 42, 44, 46, 48, 50, 52, 54, 56, 58]
-    both_defect_payoffs = [18, 20, 22, 24, 26, 28, 30, 32, 34, 36]
-
+    num_rounds = 100
     time_limit_seconds = 3600
+
+    # Payoff lists for 10 possible boards (indices 0 to 9)
+    both_cooperate_payoffs = [28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
+    betrayed_payoffs        = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26]
+    betray_payoffs          = [40, 42, 44, 46, 48, 50, 52, 54, 56, 58]
+    both_defect_payoffs     = [18, 20, 22, 24, 26, 28, 30, 32, 34, 36]
 
 
 class Subsession(BaseSubsession):
-    delta_value = models.FloatField(null=True)
-    match_number = models.IntegerField()
-    round_in_match = models.IntegerField()
-    total_rounds = models.IntegerField()
-    # Instead of one JSON field for the game matrix,
-    # we now store each payoff in its own model field.
-    game_payoff_cooperate_cooperate = models.IntegerField(null=True)
-    game_payoff_betrayed = models.IntegerField(null=True)
-    game_payoff_betray = models.IntegerField(null=True)
-    game_payoff_both_defect = models.IntegerField(null=True)
-
     def creating_session(self):
-        if self.round_number == 1:
-            # Sample delta from [0.1, 0.2, ..., 0.9]
-            delta_value = random.choice([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
-            self.session.vars['delta'] = delta_value
-            self.delta_value = delta_value
-
-            # Sample a board index (0 to 9) and build the payoff board.
-            board_index = random.randint(0, 9)
-            payoff_board = {
-                'both_cooperate_payoff': Constants.both_cooperate_payoffs[board_index],
-                'betrayed_payoff': Constants.betrayed_payoffs[board_index],
-                'betray_payoff': Constants.betray_payoffs[board_index],
-                'both_defect_payoff': Constants.both_defect_payoffs[board_index],
-            }
-            self.session.vars['payoff_board'] = payoff_board
-
-            # Save each payoff from the matrix into its own field for export.
-            self.game_payoff_cooperate_cooperate = payoff_board['both_cooperate_payoff']
-            self.game_payoff_betrayed = payoff_board['betrayed_payoff']
-            self.game_payoff_betray = payoff_board['betray_payoff']
-            self.game_payoff_both_defect = payoff_board['both_defect_payoff']
-
-            # (Optional) You can compute a full game matrix here if needed at runtime.
-            # For example (this is only stored in session and not in a model field):
-            game_matrix = {
-                'Cooperate': {
-                    'Cooperate': {'self': payoff_board['both_cooperate_payoff'],
-                                   'other': payoff_board['both_cooperate_payoff']},
-                    'Defect':    {'self': payoff_board['betrayed_payoff'],
-                                   'other': payoff_board['betray_payoff']}
-                },
-                'Defect': {
-                    'Cooperate': {'self': payoff_board['betray_payoff'],
-                                   'other': payoff_board['betrayed_payoff']},
-                    'Defect':    {'self': payoff_board['both_defect_payoff'],
-                                   'other': payoff_board['both_defect_payoff']}
-                }
-            }
-            self.session.vars['game_matrix'] = game_matrix
-
-            # Calculate match durations using a geometric distribution with p = (1 - delta).
-            match_duration = np.random.geometric(p=1 - delta_value, size=Constants.num_matches).tolist()
-            last_rounds = np.cumsum(match_duration).tolist()
-            first_rounds = [1] + [last_rounds[k - 1] + 1 for k in range(1, len(match_duration))]
-            actual_num_rounds = int(last_rounds[-1])
-            self.session.vars.update({
-                'match_duration': match_duration,
-                'last_rounds': last_rounds,
-                'first_rounds': first_rounds,
-                'actual_num_rounds': actual_num_rounds,
-                'start_time': time.time(),
-                'alive': True
-            })
-            # Save the predetermined total number of rounds.
-            self.total_rounds = actual_num_rounds
-        else:
-            self.delta_value = self.session.vars['delta']
-
-        if self.round_number > self.session.vars['actual_num_rounds']:
-            self.match_number = 0
-            self.round_in_match = 0
-            return
-
-        for k, last_round in enumerate(self.session.vars['last_rounds'], start=1):
-            if self.round_number <= last_round:
-                self.match_number = k
-                break
-
-        self.round_in_match = self.round_number - self.session.vars['first_rounds'][self.match_number - 1] + 1
-
-        if self.round_number in self.session.vars['first_rounds']:
-            self.group_randomly()
-        else:
-            self.group_like_round(self.round_number - 1)
+        if self.round_number > 1:
+            self.group_like_round(1)
 
 
 class Group(BaseGroup):
     dieroll = models.IntegerField(initial=-1)
+
+    # Stored in round 1 (for data export), but not used at runtime
+    delta_value                      = models.FloatField(null=True)
+    match_duration                   = models.IntegerField(null=True)
+    game_payoff_cooperate_cooperate  = models.IntegerField(null=True)
+    game_payoff_betrayed             = models.IntegerField(null=True)
+    game_payoff_betray               = models.IntegerField(null=True)
+    game_payoff_both_defect          = models.IntegerField(null=True)
+
     def roll_die(self):
         if self.dieroll == -1:
             self.dieroll = random.randint(1, 100)
@@ -124,31 +46,40 @@ class Group(BaseGroup):
 
 class Player(BasePlayer):
     prolific_id = models.StringField(initial="")
-    
+
     decision = models.StringField(
         choices=[['Cooperate', 'Cooperate'], ['Defect', 'Defect']],
         widget=widgets.RadioSelect,
         label="Your decision:"
     )
-    # Field to record if a timeout occurred.
     timeout_occurred = models.BooleanField(initial=False)
 
     def other_player(self):
         return self.get_others_in_group()[0]
 
     def set_payoff(self):
-        if not self.decision or not self.other_player().decision:
-            self.payoff = 0
-            return
-        board = self.session.vars['payoff_board']
+        # Pull the board from participant.vars (set in ArrivalWaitPage)
+        board = self.participant.vars.get('payoff_board', {})
+        # If for some reason it's missing, default all payoffs to zero
+        c_c = board.get('both_cooperate_payoff', 0)
+        c_d = board.get('betrayed_payoff', 0)
+        d_c = board.get('betray_payoff', 0)
+        d_d = board.get('both_defect_payoff', 0)
+
+        # Build payoff matrix
         payoff_matrix = {
             'Cooperate': {
-                'Cooperate': board['both_cooperate_payoff'],
-                'Defect': board['betrayed_payoff']
+                'Cooperate': c_c,
+                'Defect':    c_d
             },
             'Defect': {
-                'Cooperate': board['betray_payoff'],
-                'Defect': board['both_defect_payoff']
+                'Cooperate': d_c,
+                'Defect':    d_d
             }
         }
-        self.payoff = payoff_matrix[self.decision][self.other_player().decision]
+
+        # If either decision is missing, treat payoff as 0
+        if not self.decision or not self.other_player().decision:
+            self.payoff = 0
+        else:
+            self.payoff = payoff_matrix[self.decision][self.other_player().decision]
