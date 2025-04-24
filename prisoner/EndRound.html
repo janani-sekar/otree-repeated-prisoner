@@ -14,19 +14,22 @@
         You ran out of time this round. A decision was randomly selected for you.
     </div>
     {% endif %}
-    <div class="{{ message_class }}">
-      <p>{{ message }}</p>
-    </div>
 
+    <div class="alert alert-info">
+      You selected <b>{{ you }}</b>.<br>
+      Your opponent selected <b>{{ other }}</b>.<br>
+      You earned <b>{{ round_payoff }}</b>.
+    </div>
+    
     {% if not is_final_round %}
       <p>
         We rolled a 100‑sided die and the result was 
-        <b>above {{ die_roll_value }}</b>, so the game continues.
+        <b>below {{ die_roll_value }}</b>, so the game continues.
       </p>
     {% else %}
       <p>
         We rolled a 100‑sided die and the result was 
-        <b>below {{ die_roll_value }}</b>, so the game ends here.
+        <b>above {{ die_roll_value }}</b>, so the game ends here.
       </p>
     {% endif %}
 

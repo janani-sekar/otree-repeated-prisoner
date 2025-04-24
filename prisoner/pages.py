@@ -126,27 +126,16 @@ class EndRound(Page):
     def vars_for_template(self):
         d1 = self.player.decision
         d2 = self.player.other_player().decision
-        if d1 == 'Cooperate' and d2 == 'Cooperate':
-            msg, cls = "Both players cooperated!", "alert alert-info"
-        elif d1 == 'Defect' and d2 == 'Defect':
-            msg, cls = "Both players defected!", "alert alert-info"
-        elif d1 == 'Cooperate' and d2 == 'Defect':
-            msg, cls = "You cooperated while your partner defected.", "alert alert-info"
-        elif d1 == 'Defect' and d2 == 'Cooperate':
-            msg, cls = "You defected while your partner cooperated.", "alert alert-info"
-        else:
-            msg, cls = "Round result pending.", "alert alert-secondary"
-
+        
         return {
             'current_round': self.round_number,
             'timed_out_this_round': self.player.timeout_occurred,
             'match_duration': self.player.participant.vars['match_duration'],
             'die_roll_value': int(self.player.participant.vars['delta'] * 100),
-            'your_decision': d1,
-            'other_decision': d2,
+            'payoff_board': self.player.participant.vars['payoff_board'],
+            'you': d1,
+            'other': d2,
             'round_payoff': self.player.payoff,
-            'message': msg,
-            'message_class': cls,
             'is_final_round': self.round_number == self.player.participant.vars['match_duration'],
         }
 

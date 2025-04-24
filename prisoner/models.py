@@ -25,6 +25,14 @@ class Subsession(BaseSubsession):
     def creating_session(self):
         if self.round_number > 1:
             self.group_like_round(1)
+            for group in self.get_groups():
+                previous_group = group.in_round(1)
+                group.delta_value = previous_group.delta_value
+                group.match_duration = previous_group.match_duration
+                group.game_payoff_cooperate_cooperate = previous_group.game_payoff_cooperate_cooperate
+                group.game_payoff_betrayed = previous_group.game_payoff_betrayed
+                group.game_payoff_betray = previous_group.game_payoff_betray
+                group.game_payoff_both_defect = previous_group.game_payoff_both_defect
 
 class Group(BaseGroup):
     dieroll = models.IntegerField(initial=-1)
