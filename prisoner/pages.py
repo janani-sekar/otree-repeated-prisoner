@@ -2,7 +2,8 @@ from otree.api import *
 import numpy as np
 import random
 from ._builtin import Page, WaitPage
-from .models import Constants
+import json
+from .models import Constants, pregen_boards
 from scipy.stats import geom
 
 class ArrivalWaitPage(WaitPage):
@@ -12,38 +13,31 @@ class ArrivalWaitPage(WaitPage):
         return self.round_number == 1
 
     def after_all_players_arrive(self):
-        # 1) Choose delta and payoff board on the Group (for export)
         self.group.delta_value = random.choice([
             0.05, 0.10, 0.15, 0.20, 0.25,
             0.30, 0.35, 0.40, 0.45, 0.50,
             0.55, 0.60, 0.65, 0.70, 0.75,
             0.80, 0.85, 0.90, 0.95
         ])
-        idx = random.randint(0, 9)
-        self.group.game_payoff_cooperate_cooperate = Constants.both_cooperate_payoffs[idx]
-        self.group.game_payoff_betrayed            = Constants.betrayed_payoffs[idx]
-        self.group.game_payoff_betray              = Constants.betray_payoffs[idx]
-        self.group.game_payoff_both_defect         = Constants.both_defect_payoffs[idx]
+        board = random.choice(pregen_boards)
+        self.group.game_payoff_cooperate_cooperate = board['R']
+        self.group.game_payoff_betrayed = board['S']
+        self.group.game_payoff_betray = board['T']
+        self.group.game_payoff_both_defect = board['P']
 
-        # 2) Draw match duration once using geometric(delta)
         md = int(np.random.geometric(p=1 - self.group.delta_value))
         max_md = int(geom(p=0.05).ppf(0.9))
-        if md > max_md:
-            md = max_md
-        self.group.match_duration = md
+        self.group.match_duration = min(md, max_md)
 
-        # 3) Propagate everything into participant.vars
         for p in self.group.get_players():
-            p.participant.vars['delta']           = self.group.delta_value
-            p.participant.vars['match_duration']  = md
-            p.participant.vars['payoff_board']    = {
+            p.participant.vars['delta'] = self.group.delta_value
+            p.participant.vars['match_duration'] = self.group.match_duration
+            p.participant.vars['payoff_board'] = {
                 'both_cooperate_payoff': self.group.game_payoff_cooperate_cooperate,
-                'betrayed_payoff':        self.group.game_payoff_betrayed,
-                'betray_payoff':          self.group.game_payoff_betray,
-                'both_defect_payoff':     self.group.game_payoff_both_defect,
+                'betrayed_payoff': self.group.game_payoff_betrayed,
+                'betray_payoff': self.group.game_payoff_betray,
+                'both_defect_payoff': self.group.game_payoff_both_defect,
             }
-            p.participant.vars['timed_out'] = False
-
 
 class ReadyPage(Page):
     def is_displayed(self):
@@ -54,96 +48,118 @@ class Decision(Page):
     form_fields = ['decision']
     timeout_seconds = 60
 
-    def vars_for_template(self):
-        return {
-            'delta':           self.player.participant.vars['delta'],
-            'die_roll_value':  100-int(self.player.participant.vars['delta']*100),
-            'match_duration':  self.player.participant.vars['match_duration'],
-            'payoff_board':    self.player.participant.vars['payoff_board'],
-            'round_number':    self.round_number,
-        }
+    def timer_text(self):
+        return "Time left to make your decision for this round:"
 
     def is_displayed(self):
-        return (self.round_number <=
-                self.player.participant.vars['match_duration'])
+        return self.round_number <= self.player.participant.vars['match_duration']
+
+    def before_next_page(self):
+        if self.timeout_happened:
+            self.player.timeout_occurred = True
+            self.player.decision = random.choice(['Cooperate', 'Defect'])
+
+            # Properly append to the full timeout history
+            try:
+                current_list = json.loads(self.player.timed_out_rounds_json)
+                if not isinstance(current_list, list):
+                    current_list = []
+            except (json.JSONDecodeError, TypeError):
+                current_list = []
+
+            if self.round_number not in current_list:
+                current_list.append(self.round_number)
+
+            self.player.timed_out_rounds_json = json.dumps(current_list)
+
+
+    def vars_for_template(self):
+        return {
+            "round_number": self.round_number,
+            "match_duration": self.player.participant.vars['match_duration'],
+            "die_roll_value": int(self.player.participant.vars['delta'] * 100),
+            'payoff_board': self.player.participant.vars['payoff_board'],
+        }
 
 class DecisionWaitPage(WaitPage):
     body_text = "Waiting for the other participant to select a decision..."
 
     def is_displayed(self):
-        return (self.round_number <=
-                self.player.participant.vars['match_duration'])
+        return self.round_number <= self.player.participant.vars['match_duration']
 
     def after_all_players_arrive(self):
-        # if anyone timed out (decision still None), end the match for both
-        timed_out = any(not p.decision for p in self.group.get_players())
-        if timed_out:
-            for p in self.group.get_players():
-                p.participant.vars['timed_out'] = True
-                # truncate the match so we’ll go straight to End
-                p.participant.vars['match_duration'] = self.round_number
-            return
-        # otherwise, compute payoffs as usual
+        for p in self.group.get_players():
+            if p.decision is None:
+                # Assign random decision
+                p.timeout_occurred = True
+                p.decision = random.choice(['Cooperate', 'Defect'])
+
+                # Append to timeout list (safely handles existing history)
+                try:
+                    current_list = json.loads(p.timed_out_rounds_json)
+                    if not isinstance(current_list, list):
+                        current_list = []
+                except (json.JSONDecodeError, TypeError):
+                    current_list = []
+
+                if p.round_number not in current_list:
+                    current_list.append(p.round_number)
+
+                p.timed_out_rounds_json = json.dumps(current_list)
+
         for p in self.group.get_players():
             p.set_payoff()
 
-class TimeoutPage(Page):
-    """Shown if either player missed the 90s timer."""
-    def is_displayed(self):
-        return self.player.participant.vars.get('timed_out', False)
 
 class EndRound(Page):
     timeout_seconds = 30
+
+    def timer_text(self):
+        return "Time left to view this round's results:"
 
     def vars_for_template(self):
         d1 = self.player.decision
         d2 = self.player.other_player().decision
         if d1 == 'Cooperate' and d2 == 'Cooperate':
-            msg, cls = "Both cooperated!", "alert alert-success"
+            msg, cls = "Both players cooperated!", "alert alert-info"
         elif d1 == 'Defect' and d2 == 'Defect':
-            msg, cls = "Both defected!", "alert alert-danger"
+            msg, cls = "Both players defected!", "alert alert-info"
         elif d1 == 'Cooperate' and d2 == 'Defect':
-            msg, cls = "You cooperated while your partner defected.", "alert alert-warning"
+            msg, cls = "You cooperated while your partner defected.", "alert alert-info"
         elif d1 == 'Defect' and d2 == 'Cooperate':
             msg, cls = "You defected while your partner cooperated.", "alert alert-info"
         else:
             msg, cls = "Round result pending.", "alert alert-secondary"
 
-        md = self.player.participant.vars['match_duration']
-        is_final = (self.round_number == md)
-
         return {
-            'current_round':  self.round_number,
-            'match_duration': md,
-            'die_roll_value': 100 - int(self.player.participant.vars['delta'] * 100),
-            'your_decision':  d1,
+            'current_round': self.round_number,
+            'timed_out_this_round': self.player.timeout_occurred,
+            'match_duration': self.player.participant.vars['match_duration'],
+            'die_roll_value': int(self.player.participant.vars['delta'] * 100),
+            'your_decision': d1,
             'other_decision': d2,
-            'round_payoff':   self.player.payoff,
-            'message':        msg,
-            'message_class':  cls,
-            'is_final_round': is_final,
+            'round_payoff': self.player.payoff,
+            'message': msg,
+            'message_class': cls,
+            'is_final_round': self.round_number == self.player.participant.vars['match_duration'],
         }
 
     def is_displayed(self):
-        timed_out = self.player.participant.vars.get('timed_out', False)
-        md        = self.player.participant.vars['match_duration']
-        return (not timed_out) and (self.round_number <= md)
+        return self.round_number <= self.player.participant.vars['match_duration']
 
 class RoundSyncWaitPage(WaitPage):
     body_text = "Waiting for the other participant to finish reviewing the round results..."
 
     def is_displayed(self):
-            timed_out = self.player.participant.vars.get('timed_out', False)
-            md        = self.player.participant.vars['match_duration']
-            return (not timed_out) and (self.round_number < md)
+        return self.round_number < self.player.participant.vars['match_duration']
 
 class End(Page):
     timeout_seconds = 30
 
     def vars_for_template(self):
         return {
-            'current_round':   self.round_number,
-            'match_duration':  self.player.participant.vars['match_duration'],
+            'current_round': self.round_number,
+            'match_duration': self.player.participant.vars['match_duration'],
         }
 
     def is_displayed(self):
@@ -154,7 +170,6 @@ page_sequence = [
     ReadyPage,
     Decision,
     DecisionWaitPage,
-    TimeoutPage,
     EndRound,
     RoundSyncWaitPage,
     End,

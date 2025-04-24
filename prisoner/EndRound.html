@@ -9,6 +9,11 @@
 <div class="card mb-4">
   <div class="card-body text-center">
     <h4>Round {{ current_round }}</h4>
+    {% if timed_out_this_round %}
+    <div class="alert alert-warning">
+        You ran out of time this round. A decision was randomly selected for you.
+    </div>
+    {% endif %}
     <div class="{{ message_class }}">
       <p>{{ message }}</p>
     </div>

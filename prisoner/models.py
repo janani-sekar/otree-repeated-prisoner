@@ -1,4 +1,6 @@
 from otree.api import *
+import os
+import json
 import random
 
 doc = """
@@ -8,24 +10,21 @@ match duration and payoff board in round 1, which remain unchanged throughout th
 Players are paired by their arrival time via an asynchronous Wait Page.
 """
 
+# load the pre‑generated boards
+board_path = os.path.join(os.path.dirname(__file__), "gameboards.json")
+with open(board_path) as f:
+    pregen_boards = json.load(f)
+
 class Constants(BaseConstants):
     name_in_url = 'prisoner'
     players_per_group = 2
     num_rounds = 100
     time_limit_seconds = 3600
 
-    # Payoff lists for 10 possible boards (indices 0 to 9)
-    both_cooperate_payoffs = [28, 30, 32, 34, 36, 38, 40, 42, 44, 46]
-    betrayed_payoffs        = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26]
-    betray_payoffs          = [40, 42, 44, 46, 48, 50, 52, 54, 56, 58]
-    both_defect_payoffs     = [18, 20, 22, 24, 26, 28, 30, 32, 34, 36]
-
-
 class Subsession(BaseSubsession):
     def creating_session(self):
         if self.round_number > 1:
             self.group_like_round(1)
-
 
 class Group(BaseGroup):
     dieroll = models.IntegerField(initial=-1)
@@ -53,6 +52,10 @@ class Player(BasePlayer):
         label="Your decision:"
     )
     timeout_occurred = models.BooleanField(initial=False)
+    
+    # always start as an empty JSON list rather than null
+    timed_out_rounds_json = models.LongStringField(initial="[]")
+
 
     def other_player(self):
         return self.get_others_in_group()[0]
@@ -83,3 +86,19 @@ class Player(BasePlayer):
             self.payoff = 0
         else:
             self.payoff = payoff_matrix[self.decision][self.other_player().decision]
+
+    def decision_was_random(self):
+        try:
+            rounds = json.loads(self.timed_out_rounds_json or "[]")
+        except Exception:
+            return False
+        return self.round_number in rounds
+
+    def vars_for_export(self):
+        return {
+            "round_number": self.round_number,
+            "decision": self.decision,
+            "timeout_occurred": self.timeout_occurred,
+            "timed_out_rounds_json": self.timed_out_rounds_json,
+            "decision_was_random": self.decision_was_random()
+        }
