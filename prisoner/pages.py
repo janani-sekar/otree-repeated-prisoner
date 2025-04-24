@@ -42,6 +42,12 @@ class ArrivalWaitPage(WaitPage):
 class ReadyPage(Page):
     def is_displayed(self):
         return self.round_number == 1
+    
+class MatchStartWaitPage(WaitPage):
+    body_text = "Waiting for the other participant to be ready..."
+
+    def is_displayed(self):
+        return self.round_number == 1
 
 class Decision(Page):
     form_model = 'player'
@@ -168,6 +174,7 @@ class End(Page):
 page_sequence = [
     ArrivalWaitPage,
     ReadyPage,
+    MatchStartWaitPage,
     Decision,
     DecisionWaitPage,
     EndRound,
