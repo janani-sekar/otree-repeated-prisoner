@@ -1,5 +1,5 @@
-Sec/Round,Min Rounds,Mean Rounds,Median Rounds,Max Rounds,Min Dur (min),Mean Dur (min),Median Dur (min),Max Dur (min),Mean Pay ($),Median Pay ($)
-90,1,5.11,3,50,1.5,7.66,4.5,75.0,1.02,0.6
-60,1,5.11,3,50,1.0,5.11,3.0,50.0,0.68,0.4
-30,1,5.11,3,50,0.5,2.55,1.5,25.0,0.34,0.2
-15,1,5.11,3,50,0.25,1.28,0.75,12.5,0.17,0.1
+Sec/Round,Min Rounds,Mean Rounds,Median Rounds,Max Rounds,Min Dur (min),Mean Dur (min),Median Dur (min),Max Dur (min),Mean Pay ($),Median Pay ($),5th Percentile,95th Percentile,First Quartile,Third Quartile
+90,1,5.11,3,50,1.5,7.66,4.5,75.0,1.02,0.6,1.0,18.0,1.0,6.0
+60,1,5.11,3,50,1.0,5.11,3.0,50.0,0.68,0.4,1.0,18.0,1.0,6.0
+30,1,5.11,3,50,0.5,2.55,1.5,25.0,0.34,0.2,1.0,18.0,1.0,6.0
+15,1,5.11,3,50,0.25,1.28,0.75,12.5,0.17,0.1,1.0,18.0,1.0,6.0

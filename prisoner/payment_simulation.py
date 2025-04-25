@@ -32,6 +32,10 @@ mean_rounds   = lengths.mean()
 median_rounds = np.median(lengths)
 min_rounds    = lengths.min()
 max_rounds    = lengths.max()
+first_quartile = np.percentile(lengths, 25)
+third_quartile = np.percentile(lengths, 75)
+five_quantile = np.percentile(lengths, 5)
+ninetyfive_quantile = np.percentile(lengths, 95)
 print(f"Mean game length:   {mean_rounds:.2f} rounds")
 print(f"Median game length: {median_rounds:.0f} rounds")
 print(f"Min game length:    {min_rounds} rounds")
@@ -62,6 +66,10 @@ for t, d_min in durations_min.items():
         "Max Dur (min)":     round(max_dur,    2),
         "Mean Pay ($)":      round(mean_pay,   2),
         "Median Pay ($)":    round(med_pay,    2),
+        "5th Percentile":    round(five_quantile, 2),
+        "95th Percentile":   round(ninetyfive_quantile, 2),
+        "First Quartile":    round(first_quartile, 2),
+        "Third Quartile":    round(third_quartile, 2),
     })
 
 df_stats = pd.DataFrame(rows)
