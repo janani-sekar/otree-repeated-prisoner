@@ -30,24 +30,24 @@
     <table class="table table-bordered text-center" style="width: auto; margin: auto">
         <tr>
             <th colspan="2" rowspan="2"></th>
-            <th colspan="2", style="color:red;">Opponent</th>
+            <th colspan="2", style="color:darkorange;">Opponent</th>
         </tr>
         <tr>
             <th>Cooperate</th>
             <th>Defect</th>
         </tr>
         <tr class="highlight-row">
-            <th rowspan="2", style="color:green;">You</th>
+            <th rowspan="2", style="color:steelblue;">You</th>
             <td>
                 <button name="decision" value="Cooperate" class="btn btn-primary btn-decision">
                     Cooperate
                 </button>
             </td>
             <td>
-                <span style="color: green;">{{ payoff_board.both_cooperate_payoff }},</span><span style="color: red;"> {{ payoff_board.both_cooperate_payoff }}</span>
+                <span style="color: steelblue;">{{ payoff_board.both_cooperate_payoff }},</span><span style="color: darkorange;"> {{ payoff_board.both_cooperate_payoff }}</span>
             </td>
             <td>
-                <span style="color: green;">{{ payoff_board.betrayed_payoff }},</span><span style="color: red">{{ payoff_board.betray_payoff }}</span>
+                <span style="color: steelblue;">{{ payoff_board.betrayed_payoff }},</span><span style="color: darkorange">{{ payoff_board.betray_payoff }}</span>
             </td>
         </tr>
         <tr class="highlight-row">
@@ -57,10 +57,10 @@
                 </button>
             </td>
             <td>
-                <span style="color: green;">{{ payoff_board.betray_payoff }},</span><span style="color: red;"> {{ payoff_board.betrayed_payoff }}</span>
+                <span style="color: steelblue;">{{ payoff_board.betray_payoff }},</span><span style="color: darkorange;"> {{ payoff_board.betrayed_payoff }}</span>
             </td>
             <td>
-                <span style="color: green;">{{ payoff_board.both_defect_payoff }},</span><span style="color: red;"> {{ payoff_board.both_defect_payoff}}</span>
+                <span style="color: steelblue;">{{ payoff_board.both_defect_payoff }},</span><span style="color: darkorange;"> {{ payoff_board.both_defect_payoff}}</span>
             </td>
         </tr>
     </table>

@@ -59,11 +59,24 @@ class Decision(Page):
         return self.round_number <= self.player.participant.vars['match_duration']
 
     def before_next_page(self):
+        if self.round_number > 1:
+            g = self.group
+            g1 = self.player.in_round(1).group
+
+            if g.field_maybe_none('delta_value') is None:
+                g.delta_value = g1.delta_value
+                g.match_duration = g1.match_duration
+                g.game_payoff_cooperate_cooperate = g1.game_payoff_cooperate_cooperate
+                g.game_payoff_betrayed = g1.game_payoff_betrayed
+                g.game_payoff_betray = g1.game_payoff_betray
+                g.game_payoff_both_defect = g1.game_payoff_both_defect
+
+                print(f"[ROUND {self.round_number}] Group copied: delta = {g.delta_value}")
+
         if self.timeout_happened:
             self.player.timeout_occurred = True
             self.player.decision = random.choice(['Cooperate', 'Defect'])
 
-            # Properly append to the full timeout history
             try:
                 current_list = json.loads(self.player.timed_out_rounds_json)
                 if not isinstance(current_list, list):
@@ -75,7 +88,6 @@ class Decision(Page):
                 current_list.append(self.round_number)
 
             self.player.timed_out_rounds_json = json.dumps(current_list)
-
 
     def vars_for_template(self):
         return {

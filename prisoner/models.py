@@ -25,14 +25,24 @@ class Subsession(BaseSubsession):
     def creating_session(self):
         if self.round_number > 1:
             self.group_like_round(1)
-            for group in self.get_groups():
-                previous_group = group.in_round(1)
-                group.delta_value = previous_group.delta_value
-                group.match_duration = previous_group.match_duration
-                group.game_payoff_cooperate_cooperate = previous_group.game_payoff_cooperate_cooperate
-                group.game_payoff_betrayed = previous_group.game_payoff_betrayed
-                group.game_payoff_betray = previous_group.game_payoff_betray
-                group.game_payoff_both_defect = previous_group.game_payoff_both_defect
+
+            # Use a set to track which groups we've already updated
+            seen_group_ids = set()
+
+            for player in self.get_players():
+                group = player.group
+                if group.id not in seen_group_ids:
+                    prev_group = player.in_round(1).group
+
+                    group.delta_value = prev_group.delta_value
+                    group.match_duration = prev_group.match_duration
+                    group.game_payoff_cooperate_cooperate = prev_group.game_payoff_cooperate_cooperate
+                    group.game_payoff_betrayed = prev_group.game_payoff_betrayed
+                    group.game_payoff_betray = prev_group.game_payoff_betray
+                    group.game_payoff_both_defect = prev_group.game_payoff_both_defect
+
+                    seen_group_ids.add(group.id)
+
 
 class Group(BaseGroup):
     dieroll = models.IntegerField(initial=-1)
@@ -49,7 +59,6 @@ class Group(BaseGroup):
         if self.dieroll == -1:
             self.dieroll = random.randint(1, 100)
         return self.dieroll
-
 
 class Player(BasePlayer):
     prolific_id = models.StringField(initial="")
