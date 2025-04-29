@@ -28,6 +28,13 @@ class ArrivalWaitPage(WaitPage):
         self.group.match_duration = min(md, max_md)
 
         for p in self.group.get_players():
+
+            if not p.prolific_id:
+                p.prolific_id = p.participant.label or ""
+
+            if not p.participant.label:
+                p.participant.label = p.prolific_id  # Just in case
+
             p.participant.vars['delta'] = self.group.delta_value
             p.participant.vars['match_duration'] = self.group.match_duration
             p.participant.vars['payoff_board'] = {
@@ -180,7 +187,6 @@ class End(Page):
             # Save participant.payoff for oTree
             self.participant.payoff = cu(total_payment_cents)
 
-        self.player.prolific_id = self.participant.label or ""
         self.player.base_payment_cents = participant_vars.get('base_payment_cents', 0)
         self.player.bonus_payment_cents = participant_vars.get('bonus_payment_cents', 0)
         self.player.bonus_round = participant_vars.get('bonus_round', 0)

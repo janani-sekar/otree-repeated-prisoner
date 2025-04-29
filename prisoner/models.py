@@ -44,10 +44,6 @@ class Group(BaseGroup):
             self.dieroll = random.randint(1, 100)
         return self.dieroll
 
-from otree.api import (
-    models, widgets, BasePlayer, Currency as cu
-)
-import json
 
 class Player(BasePlayer):
     prolific_id = models.StringField(initial="")
@@ -99,6 +95,7 @@ class Player(BasePlayer):
         is_final_round = self.round_number == participant_vars.get('match_duration', 0)
 
         return {
+            'prolific_id': self.participant.label,
             'participant_code': self.participant.code,
             'round_number': self.round_number,
             'decision': self.decision,
@@ -112,7 +109,7 @@ class Player(BasePlayer):
         }
 
 def export_final_payments(session):
-    
+
     final_round_number = session.config['match_duration']
     app_name = __name__.split('.')[0]  # e.g., if your app name is 'prisoner'
     players = session.get_participants()
