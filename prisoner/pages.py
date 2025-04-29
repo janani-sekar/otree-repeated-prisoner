@@ -176,6 +176,7 @@ class End(Page):
             bonus_round = random.randint(1, rounds_played)
             payoffs = participant_vars.get('payoffs_per_round', [])
             bonus_payment_cents = int(payoffs[bonus_round - 1] if bonus_round and bonus_round - 1 < len(payoffs) else 0)
+            bonus_payment_cents = min(bonus_payment_cents, 25)
             total_payment_cents = base_payment_cents + bonus_payment_cents
 
             participant_vars['base_payment_cents'] = base_payment_cents

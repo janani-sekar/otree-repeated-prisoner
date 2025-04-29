@@ -44,7 +44,6 @@ class Group(BaseGroup):
             self.dieroll = random.randint(1, 100)
         return self.dieroll
 
-
 class Player(BasePlayer):
     prolific_id = models.StringField(initial="")
 

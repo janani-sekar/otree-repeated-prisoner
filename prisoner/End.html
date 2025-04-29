@@ -16,7 +16,7 @@
 
             {% if bonus_round %}
                 <p>Bonus round selected: <strong>Round {{ bonus_round }}</strong></p>
-                <p>Bonus payment: <strong>{{ bonus_payment }}</strong> (points earned in selected round)</p>
+                <p>Bonus payment: <strong>{{ bonus_payment }}</strong> ($0.01 per point earned in selected round, capped at $0.25)</p>
             {% else %}
                 <p>No bonus round selected (0 rounds played)</p>
             {% endif %}
@@ -25,7 +25,7 @@
             <h5>Total Payment</h5>
             <h3 style="color:green; font-weight:bold;">{{ total_payment }}</h3>
 
-            <p class="mt-3">Please wait quietly for further instructions.</p>
+            <p class="mt-3">Please proceed by checking the box below.</p>
         </div>
     </div>
 </div>
