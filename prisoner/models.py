@@ -1,7 +1,9 @@
 from otree.api import *
 import os
 import json
+import pandas as pd
 import random
+from scipy.stats import geom
 
 doc = """
 Repeated Prisoner's Dilemma where each pair is fixed for the entire session.
@@ -18,30 +20,12 @@ with open(board_path) as f:
 class Constants(BaseConstants):
     name_in_url = 'prisoner'
     players_per_group = 2
-    num_rounds = 100
-    time_limit_seconds = 3600
+    num_rounds = int(geom(p=0.05).ppf(0.9))
 
 class Subsession(BaseSubsession):
     def creating_session(self):
         if self.round_number > 1:
             self.group_like_round(1)
-
-            # Use a set to track which groups we've already updated
-            seen_group_ids = set()
-
-            for player in self.get_players():
-                group = player.group
-                if group.id not in seen_group_ids:
-                    prev_group = player.in_round(1).group
-
-                    group.delta_value = prev_group.delta_value
-                    group.match_duration = prev_group.match_duration
-                    group.game_payoff_cooperate_cooperate = prev_group.game_payoff_cooperate_cooperate
-                    group.game_payoff_betrayed = prev_group.game_payoff_betrayed
-                    group.game_payoff_betray = prev_group.game_payoff_betray
-                    group.game_payoff_both_defect = prev_group.game_payoff_both_defect
-
-                    seen_group_ids.add(group.id)
 
 
 class Group(BaseGroup):
@@ -60,6 +44,11 @@ class Group(BaseGroup):
             self.dieroll = random.randint(1, 100)
         return self.dieroll
 
+from otree.api import (
+    models, widgets, BasePlayer, Currency as cu
+)
+import json
+
 class Player(BasePlayer):
     prolific_id = models.StringField(initial="")
 
@@ -69,36 +58,30 @@ class Player(BasePlayer):
         label="Your decision:"
     )
     timeout_occurred = models.BooleanField(initial=False)
-    
-    # always start as an empty JSON list rather than null
+
     timed_out_rounds_json = models.LongStringField(initial="[]")
 
+    # Real model fields so they show up in CSV export (saved only at final round)
+    base_payment_cents = models.IntegerField(initial=0)
+    bonus_payment_cents = models.IntegerField(initial=0)
+    bonus_round = models.IntegerField(initial=0)
+    total_payment_cents = models.IntegerField(initial=0)
 
     def other_player(self):
         return self.get_others_in_group()[0]
 
     def set_payoff(self):
-        # Pull the board from participant.vars (set in ArrivalWaitPage)
         board = self.participant.vars.get('payoff_board', {})
-        # If for some reason it's missing, default all payoffs to zero
         c_c = board.get('both_cooperate_payoff', 0)
         c_d = board.get('betrayed_payoff', 0)
         d_c = board.get('betray_payoff', 0)
         d_d = board.get('both_defect_payoff', 0)
 
-        # Build payoff matrix
         payoff_matrix = {
-            'Cooperate': {
-                'Cooperate': c_c,
-                'Defect':    c_d
-            },
-            'Defect': {
-                'Cooperate': d_c,
-                'Defect':    d_d
-            }
+            'Cooperate': {'Cooperate': c_c, 'Defect': c_d},
+            'Defect': {'Cooperate': d_c, 'Defect': d_d}
         }
 
-        # If either decision is missing, treat payoff as 0
         if not self.decision or not self.other_player().decision:
             self.payoff = 0
         else:
@@ -112,10 +95,42 @@ class Player(BasePlayer):
         return self.round_number in rounds
 
     def vars_for_export(self):
+        participant_vars = self.participant.vars
+        is_final_round = self.round_number == participant_vars.get('match_duration', 0)
+
         return {
-            "round_number": self.round_number,
-            "decision": self.decision,
-            "timeout_occurred": self.timeout_occurred,
-            "timed_out_rounds_json": self.timed_out_rounds_json,
-            "decision_was_random": self.decision_was_random()
+            'participant_code': self.participant.code,
+            'round_number': self.round_number,
+            'decision': self.decision,
+            'timeout_occurred': self.timeout_occurred,
+            'timed_out_rounds': self.timed_out_rounds_json,
+            'payoff': self.payoff,
+            'base_payment_cents': self.base_payment_cents if is_final_round else '',
+            'bonus_payment_cents': self.bonus_payment_cents if is_final_round else '',
+            'bonus_round': self.bonus_round if is_final_round else '',
+            'total_payment_cents': self.total_payment_cents if is_final_round else '',
         }
+
+def export_final_payments(session):
+    
+    final_round_number = session.config['match_duration']
+    app_name = __name__.split('.')[0]  # e.g., if your app name is 'prisoner'
+    players = session.get_participants()
+
+    records = []
+    for p in players:
+        final_player = p.get_player_by_round(final_round_number)
+        records.append({
+            'participant_code': p.code,
+            'prolific_id': p.label,
+            'base_payment_cents': final_player.base_payment_cents,
+            'bonus_payment_cents': final_player.bonus_payment_cents,
+            'bonus_round': final_player.bonus_round,
+            'total_payment_cents': final_player.total_payment_cents,
+            'total_payment_usd': round((final_player.total_payment_cents / 100) * session.config['real_world_currency_per_point'], 2)
+        })
+
+    df = pd.DataFrame(records)
+    output_path = f'_payment_exports/{session.code}_final_payments.csv'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    df.to_csv(output_path, index=False)

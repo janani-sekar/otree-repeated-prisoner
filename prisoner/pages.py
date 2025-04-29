@@ -59,35 +59,35 @@ class Decision(Page):
         return self.round_number <= self.player.participant.vars['match_duration']
 
     def before_next_page(self):
+        
         if self.round_number > 1:
-            g = self.group
+            g  = self.group
             g1 = self.player.in_round(1).group
-
+            # only copy once when blank
             if g.field_maybe_none('delta_value') is None:
-                g.delta_value = g1.delta_value
-                g.match_duration = g1.match_duration
+                g.delta_value                     = g1.delta_value
+                g.match_duration                  = g1.match_duration
                 g.game_payoff_cooperate_cooperate = g1.game_payoff_cooperate_cooperate
-                g.game_payoff_betrayed = g1.game_payoff_betrayed
-                g.game_payoff_betray = g1.game_payoff_betray
-                g.game_payoff_both_defect = g1.game_payoff_both_defect
+                g.game_payoff_betrayed            = g1.game_payoff_betrayed
+                g.game_payoff_betray              = g1.game_payoff_betray
+                g.game_payoff_both_defect         = g1.game_payoff_both_defect
+                # optional debug
+                print(f"[ROUND {self.round_number}] Group settings copied from round 1")
 
-                print(f"[ROUND {self.round_number}] Group copied: delta = {g.delta_value}")
+        # pull the list (might be empty)
+        rounds = self.player.participant.vars.get('timed_out_rounds', [])
+        # write it into the per-round field so exports pick it up
+        self.player.timed_out_rounds_json = json.dumps(rounds)
 
         if self.timeout_happened:
             self.player.timeout_occurred = True
             self.player.decision = random.choice(['Cooperate', 'Defect'])
-
-            try:
-                current_list = json.loads(self.player.timed_out_rounds_json)
-                if not isinstance(current_list, list):
-                    current_list = []
-            except (json.JSONDecodeError, TypeError):
-                current_list = []
-
-            if self.round_number not in current_list:
-                current_list.append(self.round_number)
-
-            self.player.timed_out_rounds_json = json.dumps(current_list)
+            # update the participant.vars list
+            if self.round_number not in rounds:
+                rounds.append(self.round_number)
+                self.player.participant.vars['timed_out_rounds'] = rounds
+            # mirror again
+            self.player.timed_out_rounds_json = json.dumps(rounds)
 
     def vars_for_template(self):
         return {
@@ -106,25 +106,20 @@ class DecisionWaitPage(WaitPage):
     def after_all_players_arrive(self):
         for p in self.group.get_players():
             if p.decision is None:
-                # Assign random decision
+                rounds = p.participant.vars.get('timed_out_rounds', [])
+                if p.round_number not in rounds:
+                    rounds.append(p.round_number)
+                p.participant.vars['timed_out_rounds'] = rounds
+                p.timed_out_rounds_json = json.dumps(rounds)   # ← mirror again
                 p.timeout_occurred = True
                 p.decision = random.choice(['Cooperate', 'Defect'])
 
-                # Append to timeout list (safely handles existing history)
-                try:
-                    current_list = json.loads(p.timed_out_rounds_json)
-                    if not isinstance(current_list, list):
-                        current_list = []
-                except (json.JSONDecodeError, TypeError):
-                    current_list = []
-
-                if p.round_number not in current_list:
-                    current_list.append(p.round_number)
-
-                p.timed_out_rounds_json = json.dumps(current_list)
-
-        for p in self.group.get_players():
             p.set_payoff()
+            # Record payoff for this round
+            if 'payoffs_per_round' not in p.participant.vars:
+                p.participant.vars['payoffs_per_round'] = []
+
+            p.participant.vars['payoffs_per_round'].append(p.payoff)
 
 
 class EndRound(Page):
@@ -134,20 +129,18 @@ class EndRound(Page):
         return "Time left to view this round's results:"
 
     def vars_for_template(self):
-        d1 = self.player.decision
-        d2 = self.player.other_player().decision
-
         return {
-            'current_round': self.round_number,
-            'timed_out_this_round': self.player.timeout_occurred,
-            'match_duration': self.player.participant.vars['match_duration'],
-            'die_roll_value': int(self.player.participant.vars['delta'] * 100),
-            'payoff_board': self.player.participant.vars['payoff_board'],
-            'you': d1,
-            'other': d2,
-            'round_payoff': self.player.payoff,
-            'is_final_round': self.round_number == self.player.participant.vars['match_duration'],
+            'current_round':          self.round_number,
+            'timed_out_this_round':   self.player.timeout_occurred,
+            'match_duration':         self.player.participant.vars['match_duration'],
+            'die_roll_value':         int(self.player.participant.vars['delta'] * 100),
+            'payoff_board':           self.player.participant.vars['payoff_board'],
+            'you':                    self.player.decision,
+            'other':                  self.player.other_player().decision,
+            'round_payoff':           self.player.payoff,
+            'is_final_round':         self.round_number == self.player.participant.vars['match_duration'],
         }
+
 
     def is_displayed(self):
         return self.round_number <= self.player.participant.vars['match_duration']
@@ -159,16 +152,62 @@ class RoundSyncWaitPage(WaitPage):
         return self.round_number < self.player.participant.vars['match_duration']
 
 class End(Page):
-    timeout_seconds = 30
+    form_model = 'player'
+    form_fields = []
+
+    def is_displayed(self):
+        match_duration = self.player.participant.vars.get('match_duration', 0)
+        return self.round_number == match_duration
 
     def vars_for_template(self):
+        participant_vars = self.player.participant.vars
+        rounds_played = participant_vars.get('match_duration', 0)
+        conversion_rate = self.session.config['real_world_currency_per_point']
+
+        if not participant_vars.get('payment_computed'):
+            base_payment_cents = min(rounds_played, 10) * 15
+            bonus_round = random.randint(1, rounds_played)
+            payoffs = participant_vars.get('payoffs_per_round', [])
+            bonus_payment_cents = int(payoffs[bonus_round - 1] if bonus_round and bonus_round - 1 < len(payoffs) else 0)
+            total_payment_cents = base_payment_cents + bonus_payment_cents
+
+            participant_vars['base_payment_cents'] = base_payment_cents
+            participant_vars['bonus_payment_cents'] = bonus_payment_cents
+            participant_vars['bonus_round'] = bonus_round
+            participant_vars['total_payment_cents'] = total_payment_cents
+            participant_vars['payment_computed'] = True
+
+            # Save participant.payoff for oTree
+            self.participant.payoff = cu(total_payment_cents)
+
+        self.player.prolific_id = self.participant.label or ""
+        self.player.base_payment_cents = participant_vars.get('base_payment_cents', 0)
+        self.player.bonus_payment_cents = participant_vars.get('bonus_payment_cents', 0)
+        self.player.bonus_round = participant_vars.get('bonus_round', 0)
+        self.player.total_payment_cents = participant_vars.get('total_payment_cents', 0)
+
+        base_cents = participant_vars.get('base_payment_cents', 0)
+        bonus_cents = participant_vars.get('bonus_payment_cents', 0)
+        bonus_round = participant_vars.get('bonus_round', 0)
+
+        base_payment = f"${base_cents * conversion_rate:.2f}"
+        bonus_payment = f"${bonus_cents * conversion_rate:.2f}"
+        total_payment = f"${(base_cents + bonus_cents) * conversion_rate:.2f}"
+
         return {
-            'current_round': self.round_number,
-            'match_duration': self.player.participant.vars['match_duration'],
+            'rounds_played': int(rounds_played),
+            'base_payment': base_payment,
+            'bonus_round': bonus_round,
+            'bonus_payment': bonus_payment,
+            'total_payment': total_payment,
         }
+
+class GeneralWaitPage(WaitPage):
+    body_text = "Game is over..."
 
     def is_displayed(self):
         return self.round_number == self.player.participant.vars['match_duration']
+
 
 page_sequence = [
     ArrivalWaitPage,
@@ -179,4 +218,5 @@ page_sequence = [
     EndRound,
     RoundSyncWaitPage,
     End,
+    GeneralWaitPage,
 ]
