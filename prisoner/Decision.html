@@ -69,18 +69,6 @@
 
 {% block scripts %}
 <script>
-// 1) At t=30s show "30 seconds left"
-setTimeout(function() {
-    const timerEl = document.getElementById('timer');
-    timerEl.textContent = '30 seconds left';
-    timerEl.style.display = 'block';
-}, 30000);
-
-// 2) At t=35s hide it again
-setTimeout(function() {
-    const timerEl = document.getElementById('timer');
-    timerEl.style.display = 'none';
-}, 35000);
 
 // 3) At t=55s show "5 seconds left"
 setTimeout(function() {

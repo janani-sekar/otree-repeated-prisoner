@@ -57,7 +57,7 @@ class MatchStartWaitPage(WaitPage):
 class Decision(Page):
     form_model = 'player'
     form_fields = ['decision']
-    timeout_seconds = 60
+    timeout_seconds = 30
 
     def timer_text(self):
         return "Time left to make your decision for this round:"
