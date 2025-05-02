@@ -8,11 +8,11 @@
     <div class="card-body text-center">
         <h3 class="card-title">Thank you for participating!</h3>
         <div class="card-text">
-            <p>Your session has concluded.</p>
+            <p>Your game has concluded.</p>
             <hr>
             <h5>Payment Summary</h5>
             <p>Rounds played: <strong>{{ rounds_played }}</strong></p>
-            <p>Base payment: <strong>{{ base_payment }}</strong> ({{ rounds_played }} rounds × $0.15, capped at 10 rounds)</p>
+            <p>Base payment: <strong>{{ base_payment }}</strong> (1.50 + $0.15 per additional round after round 10, capped at 10 additional rounds)</p>
 
             {% if bonus_round %}
                 <p>Bonus round selected: <strong>Round {{ bonus_round }}</strong></p>
