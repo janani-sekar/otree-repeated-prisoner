@@ -45,6 +45,11 @@ class ArrivalWaitPage(WaitPage):
             }
 
 class ReadyPage(Page):
+    timeout_seconds = 60
+
+    def timer_text(self):
+        return "Time left until the game automatically begins:"
+
     def is_displayed(self):
         return self.round_number == 1
     

@@ -15,12 +15,27 @@
         min-width: 150px;
         margin: 5px;
     }
+
+    /* Timer styling with fade transition */
+    #timer {
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s ease-in-out;
+        max-width: 400px;
+        margin: 10px auto;
+        padding: 10px 20px;
+    }
+
+    #timer.show {
+        opacity: 1;
+        visibility: visible;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- Hidden until triggered -->
-<div id="timer" class="alert alert-danger text-center mb-3" style="display: none;">
+<div id="timer" class="alert alert-danger text-center mb-3">
   <!-- content set by JavaScript -->
 </div>
 
@@ -30,14 +45,14 @@
     <table class="table table-bordered text-center" style="width: auto; margin: auto">
         <tr>
             <th colspan="2" rowspan="2"></th>
-            <th colspan="2", style="color:darkorange;">Opponent</th>
+            <th colspan="2" style="color:darkorange;">Opponent</th>
         </tr>
         <tr>
             <th>Cooperate</th>
             <th>Defect</th>
         </tr>
         <tr class="highlight-row">
-            <th rowspan="2", style="color:steelblue;">You</th>
+            <th rowspan="2" style="color:steelblue;">You</th>
             <td>
                 <button name="decision" value="Cooperate" class="btn btn-primary btn-decision">
                     Cooperate
@@ -69,12 +84,17 @@
 
 {% block scripts %}
 <script>
-
-// 3) At t=55s show "5 seconds left"
-setTimeout(function() {
+function fadeTimer(message) {
     const timerEl = document.getElementById('timer');
-    timerEl.textContent = '5 seconds left';
-    timerEl.style.display = 'block';
-}, 55000);
+    timerEl.textContent = message;
+    timerEl.classList.add('show');
+
+    setTimeout(() => {
+        timerEl.classList.remove('show');
+    }, 2000);
+}
+
+setTimeout(() => fadeTimer("10 seconds left"), 20000);
+setTimeout(() => fadeTimer("5 seconds left"), 25000);
 </script>
 {% endblock %}
