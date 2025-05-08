@@ -7,6 +7,7 @@ from .models import Constants, pregen_boards
 from scipy.stats import geom
 
 class ArrivalWaitPage(WaitPage):
+    body_text = "Waiting for another participant to join. Please do not exit this page..."
     group_by_arrival_time = True
 
     def is_displayed(self):
@@ -184,7 +185,7 @@ class End(Page):
                 adjustment_cents = min(rounds_played-10, 10) * 15
                 base_payment_cents += adjustment_cents
 
-            bonus_round = random.randint(1, rounds_played)
+            bonus_round = rounds_played 
             payoffs = participant_vars.get('payoffs_per_round', [])
             bonus_payment_cents = int(payoffs[bonus_round - 1] if bonus_round and bonus_round - 1 < len(payoffs) else 0)
             bonus_payment_cents = min(bonus_payment_cents, 25)

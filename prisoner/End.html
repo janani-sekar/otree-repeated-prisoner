@@ -12,14 +12,10 @@
             <hr>
             <h5>Payment Summary</h5>
             <p>Rounds played: <strong>{{ rounds_played }}</strong></p>
-            <p>Base payment: <strong>{{ base_payment }}</strong> (1.50 + $0.15 per additional round after round 10, capped at 10 additional rounds)</p>
+            <p>Base payment: <strong>{{ base_payment }}</strong> (1.50 + $0.15 per round after Round 10, capped at 10 additional rounds)</p>
 
-            {% if bonus_round %}
-                <p>Bonus round selected: <strong>Round {{ bonus_round }}</strong></p>
-                <p>Bonus payment: <strong>{{ bonus_payment }}</strong> ($0.01 per point earned in selected round, capped at $0.25)</p>
-            {% else %}
-                <p>No bonus round selected (0 rounds played)</p>
-            {% endif %}
+            <p>Your bonus is determined by the final round: <strong>Round {{ bonus_round }}</strong></p>
+            <p>Bonus payment: <strong>{{ bonus_payment }}</strong> ($0.01 per point earned in final round)</p>
 
             <hr>
             <h5>Total Payment</h5>
