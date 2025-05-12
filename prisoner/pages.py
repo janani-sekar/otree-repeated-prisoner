@@ -178,17 +178,16 @@ class End(Page):
         conversion_rate = self.session.config['real_world_currency_per_point']
 
         if not participant_vars.get('payment_computed'):
-            base_payment_cents = 150
+            base_payment_cents = 100
             adjustment_cents = 0
 
             if rounds_played > 10:
-                adjustment_cents = min(rounds_played-10, 10) * 15
+                adjustment_cents = min(rounds_played-10, 10) * 10
                 base_payment_cents += adjustment_cents
 
             bonus_round = rounds_played 
             payoffs = participant_vars.get('payoffs_per_round', [])
             bonus_payment_cents = int(payoffs[bonus_round - 1] if bonus_round and bonus_round - 1 < len(payoffs) else 0)
-            bonus_payment_cents = min(bonus_payment_cents, 25)
             total_payment_cents = base_payment_cents + bonus_payment_cents
 
             participant_vars['base_payment_cents'] = base_payment_cents
