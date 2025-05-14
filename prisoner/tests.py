@@ -1,23 +1,19 @@
-from otree.api import Bot
+from otree.api import Bot, Submission
 from . import pages
 import random
 
 class PlayerBot(Bot):
     def play_round(self):
-        # Round 1: go through the onboarding flow
+        # Round 1: onboarding page only
         if self.round_number == 1:
             yield pages.ReadyPage
-            # Wait pages (ArrivalWaitPage, MatchStartWaitPage) are skipped by bots
 
-        # Play decision round
+        # Play if within match duration
         if self.round_number <= self.participant.vars['match_duration']:
             yield pages.Decision, {'decision': random.choice(['Cooperate', 'Defect'])}
-            # Wait page (DecisionWaitPage) skipped automatically
             yield pages.EndRound
-            if self.round_number < self.participant.vars['match_duration']:
-                yield pages.RoundSyncWaitPage
 
-        # End screen logic (final round)
+        # Final round: display end-of-game results
         if self.round_number == self.participant.vars['match_duration']:
-            yield pages.End
-            yield pages.GeneralWaitPage
+            yield Submission(pages.End, check_html=False)
+            # Do NOT yield GeneralWaitPage — it's a WaitPage
