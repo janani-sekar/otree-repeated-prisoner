@@ -9,10 +9,10 @@ from scipy.stats import geom
 class ArrivalWaitPage(WaitPage):
     body_text = "Waiting for another participant to join. Please do not exit this page..."
     group_by_arrival_time = True
-
+    
     def is_displayed(self):
         return self.round_number == 1
-
+    
     def after_all_players_arrive(self):
         self.group.delta_value = random.choice([
             0.50, 0.55, 0.60, 0.65, 0.70, 0.75,

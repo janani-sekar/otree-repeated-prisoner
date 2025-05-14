@@ -5,18 +5,17 @@ SESSION_CONFIGS = [
         display_name="Repeated Prisoner's Dilemma Prolific",
         app_sequence=['prisoner'], 
         num_demo_participants=2, 
-        # completionlink='https://app.prolific.co/submissions/complete?cc=11111111',
     ),
 ]
 
 SESSION_CONFIG_DEFAULTS = dict(
     admin_report_classes = ['prisoner.admin.PaymentReport'],
     real_world_currency_per_point=.01, 
-    participation_url=f'/room/Prolific_1/',
     participation_fee=0.00, 
     doc="",
+    participation_url=f'/room/Prolific_1/',
     # Modern additions:
-    use_browser_bots=False,  # Recommended for security
+    use_browser_bots=True,  # Recommended for security
     export_filenames_include_app_name=True  # Better data export
 )
 
