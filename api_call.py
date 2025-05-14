@@ -29,7 +29,7 @@ try:
         'sessions',
         session_config_name='prolific_study',
         room_name='Prolific_1',
-        num_participants=250,
+        num_participants=200,
     )
     pprint(data)
 except Exception as e:

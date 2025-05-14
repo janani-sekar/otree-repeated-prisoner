@@ -14,8 +14,7 @@ SESSION_CONFIG_DEFAULTS = dict(
     participation_fee=0.00, 
     doc="",
     participation_url=f'/room/Prolific_1/',
-    # Modern additions:
-    use_browser_bots=True,  # Recommended for security
+    use_browser_bots=False,  # Recommended for security
     export_filenames_include_app_name=True  # Better data export
 )
 
