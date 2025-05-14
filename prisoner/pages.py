@@ -9,41 +9,9 @@ from scipy.stats import geom
 class ArrivalWaitPage(WaitPage):
     body_text = "Waiting for another participant to join. Please do not exit this page..."
     group_by_arrival_time = True
-    
+
     def is_displayed(self):
         return self.round_number == 1
-    
-    def after_all_players_arrive(self):
-        self.group.delta_value = random.choice([
-            0.50, 0.55, 0.60, 0.65, 0.70, 0.75,
-            0.80, 0.85, 0.90, 0.95
-        ])
-        board = random.choice(pregen_boards)
-        self.group.game_payoff_cooperate_cooperate = board['R']
-        self.group.game_payoff_betrayed = board['S']
-        self.group.game_payoff_betray = board['T']
-        self.group.game_payoff_both_defect = board['P']
-
-        md = int(np.random.geometric(p=1 - self.group.delta_value))
-        max_md = int(geom(p=0.05).ppf(0.9))
-        self.group.match_duration = min(md, max_md)
-
-        for p in self.group.get_players():
-
-            if not p.prolific_id:
-                p.prolific_id = p.participant.label or ""
-
-            if not p.participant.label:
-                p.participant.label = p.prolific_id  # Just in case
-
-            p.participant.vars['delta'] = self.group.delta_value
-            p.participant.vars['match_duration'] = self.group.match_duration
-            p.participant.vars['payoff_board'] = {
-                'both_cooperate_payoff': self.group.game_payoff_cooperate_cooperate,
-                'betrayed_payoff': self.group.game_payoff_betrayed,
-                'betray_payoff': self.group.game_payoff_betray,
-                'both_defect_payoff': self.group.game_payoff_both_defect,
-            }
 
 class ReadyPage(Page):
     timeout_seconds = 60
@@ -53,6 +21,41 @@ class ReadyPage(Page):
 
     def is_displayed(self):
         return self.round_number == 1
+
+    def before_next_page(self):
+        g = self.player.group
+
+        # Only run this once per group
+        if g.field_maybe_none('delta_value') is None:
+            g.delta_value = random.choice([
+                0.50, 0.55, 0.60, 0.65, 0.70, 0.75,
+                0.80, 0.85, 0.90, 0.95
+            ])
+            board = random.choice(pregen_boards)
+            g.game_payoff_cooperate_cooperate = board['R']
+            g.game_payoff_betrayed = board['S']
+            g.game_payoff_betray = board['T']
+            g.game_payoff_both_defect = board['P']
+
+            md = int(np.random.geometric(p=1 - g.delta_value))
+            max_md = int(geom(p=0.05).ppf(0.9))
+            g.match_duration = min(md, max_md)
+
+            for p in g.get_players():
+                if not p.prolific_id:
+                    p.prolific_id = p.participant.label or ""
+
+                if not p.participant.label:
+                    p.participant.label = p.prolific_id
+
+                p.participant.vars['delta'] = g.delta_value
+                p.participant.vars['match_duration'] = g.match_duration
+                p.participant.vars['payoff_board'] = {
+                    'both_cooperate_payoff': g.game_payoff_cooperate_cooperate,
+                    'betrayed_payoff': g.game_payoff_betrayed,
+                    'betray_payoff': g.game_payoff_betray,
+                    'both_defect_payoff': g.game_payoff_both_defect,
+                }
     
 class MatchStartWaitPage(WaitPage):
     body_text = "Waiting for the other participant to be ready..."
