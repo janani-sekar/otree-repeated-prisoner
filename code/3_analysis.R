@@ -8,8 +8,16 @@ library(ggplot2)
 paired_df <- read_feather("data/player_pair_sequences.feather") %>%
   mutate(
     decision_tuple = map(decision_tuple, ~ map(fromJSON(.x, simplifyVector = FALSE), unlist)),
-    payoff_tuple   = map(payoff_tuple,   ~ map(fromJSON(.x, simplifyVector = FALSE), unlist))
+    payoff_tuple   = map(payoff_tuple,   ~ map(fromJSON(.x, simplifyVector = FALSE), unlist)),
+    timeout_occured = map(timeout_tuple, ~ map(fromJSON(.x, simplifyVector = FALSE), unlist))
   )
+
+# === Filter to rows where no timeouts occurred in any round ===
+paired_df <- paired_df %>%
+  filter(
+    map_lgl(timeout_occured, ~ all(flatten_int(.x) == 0))
+  )
+
 
 if (!dir.exists("figures")) dir.create("figures")
 

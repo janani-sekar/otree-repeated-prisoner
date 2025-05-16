@@ -69,10 +69,13 @@ def process_file(path):
 
 
 # Process both files
-df1 = process_file("data/pilot1.csv")
-df2 = process_file("data/pilot2.csv")
-df3 = process_file("data/pilot3.csv")
+# df1 = process_file("data/pilot1.csv")
+# df2 = process_file("data/pilot2.csv")
+# df3 = process_file("data/pilot3.csv")
+df4 = process_file("data/pilot4.csv")
 
 # Combine into one dataset
-combined = pd.concat([df3], ignore_index=True)
+combined = pd.concat([df4], ignore_index=True)
 combined.to_feather("data/pilot_combined_long.feather")
+
+
