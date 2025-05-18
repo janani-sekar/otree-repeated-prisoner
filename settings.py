@@ -29,6 +29,22 @@ dict(
     display_name='Prolific_1'
 ),
 dict(
+    name='Prolific_2',
+    display_name='Prolific_2'
+),
+dict(
+    name='Prolific_3',
+    display_name='Prolific_3'
+),
+dict(
+    name='Prolific_4',
+    display_name='Prolific_4'
+),
+dict(
+    name='Prolific_5',
+    display_name='Prolific_5'
+),
+dict(
     name='live_demo',
     display_name='Room for Live Demo (No Participant Labels)'
 )
