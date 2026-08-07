@@ -55,3 +55,5 @@ ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')
 
 # don't share this with anybody.
 SECRET_KEY = '2_1xpevqi65$0e$w4=)@izbb*pu3jo^z)rca1hfsqg@p3gnmah'
+
+DEBUG = False

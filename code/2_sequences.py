@@ -2,7 +2,7 @@ import pandas as pd
 import json
 
 # Load the long-format combined data
-df = pd.read_feather("data/pilot_combined_long.feather")
+df = pd.read_feather("data/data_combined_long.feather")
 df = df.sort_values(by=["participant.code", "round_number"])
 df.dropna(inplace=True)
 print(df.columns)
@@ -98,3 +98,4 @@ paired_sequences_df["timeout_tuple"] = paired_sequences_df["timeout_tuple"].appl
 
 # Save as Feather
 paired_sequences_df.to_feather("data/player_pair_sequences.feather")
+paired_sequences_df.to_csv("data/player_pair_sequences.csv")

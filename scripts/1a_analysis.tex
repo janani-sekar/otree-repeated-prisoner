@@ -1,0 +1,608 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={O-tree Data Analysis},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{O-tree Data Analysis}
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+\maketitle
+
+\subsection{Load and Preprocess Data}\label{load-and-preprocess-data}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{paired\_df }\OtherTok{\textless{}{-}} \FunctionTok{read\_feather}\NormalTok{(}\StringTok{"../data/player\_pair\_sequences.feather"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{decision\_tuple =} \FunctionTok{map}\NormalTok{(decision\_tuple, }\SpecialCharTok{\textasciitilde{}} \FunctionTok{map}\NormalTok{(}\FunctionTok{fromJSON}\NormalTok{(.x, }\AttributeTok{simplifyVector =} \ConstantTok{FALSE}\NormalTok{), unlist)),}
+    \AttributeTok{payoff\_tuple   =} \FunctionTok{map}\NormalTok{(payoff\_tuple,   }\SpecialCharTok{\textasciitilde{}} \FunctionTok{map}\NormalTok{(}\FunctionTok{fromJSON}\NormalTok{(.x, }\AttributeTok{simplifyVector =} \ConstantTok{FALSE}\NormalTok{), unlist)),}
+    \AttributeTok{timeout\_occured =} \FunctionTok{map}\NormalTok{(timeout\_tuple, }\SpecialCharTok{\textasciitilde{}} \FunctionTok{map}\NormalTok{(}\FunctionTok{fromJSON}\NormalTok{(.x, }\AttributeTok{simplifyVector =} \ConstantTok{FALSE}\NormalTok{), unlist))}
+\NormalTok{  )}
+
+\NormalTok{paired\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}
+    \FunctionTok{map\_lgl}\NormalTok{(timeout\_occured, }\SpecialCharTok{\textasciitilde{}} \FunctionTok{all}\NormalTok{(}\FunctionTok{flatten\_int}\NormalTok{(.x) }\SpecialCharTok{==} \DecValTok{0}\NormalTok{))}
+\NormalTok{  )}
+
+\ControlFlowTok{if}\NormalTok{ (}\SpecialCharTok{!}\FunctionTok{dir.exists}\NormalTok{(}\StringTok{"../figures"}\NormalTok{)) }\FunctionTok{dir.create}\NormalTok{(}\StringTok{"../figures"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Compute Delta Metrics}\label{compute-delta-metrics}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{paired\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{R =}\NormalTok{ group.game\_payoff\_cooperate\_cooperate,}
+    \AttributeTok{S =}\NormalTok{ group.game\_payoff\_betrayed,}
+    \AttributeTok{T =}\NormalTok{ group.game\_payoff\_betray,}
+    \AttributeTok{P =}\NormalTok{ group.game\_payoff\_both\_defect,}
+    \AttributeTok{g =}\NormalTok{ ((T }\SpecialCharTok{{-}}\NormalTok{ P) }\SpecialCharTok{/}\NormalTok{ (R }\SpecialCharTok{{-}}\NormalTok{ P)) }\SpecialCharTok{{-}} \DecValTok{1}\NormalTok{,}
+    \AttributeTok{l =} \SpecialCharTok{{-}}\DecValTok{1} \SpecialCharTok{*}\NormalTok{ ((S }\SpecialCharTok{{-}}\NormalTok{ P) }\SpecialCharTok{/}\NormalTok{ (R }\SpecialCharTok{{-}}\NormalTok{ P)),}
+    \AttributeTok{delta\_spe =}\NormalTok{ g }\SpecialCharTok{/}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{+}\NormalTok{ g),}
+    \AttributeTok{delta\_rd  =}\NormalTok{ (g }\SpecialCharTok{+}\NormalTok{ l) }\SpecialCharTok{/}\NormalTok{ (}\DecValTok{1} \SpecialCharTok{+}\NormalTok{ g }\SpecialCharTok{+}\NormalTok{ l),}
+    \AttributeTok{Delta\_rd  =}\NormalTok{ group.delta\_value }\SpecialCharTok{{-}}\NormalTok{ delta\_rd}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Distribution of Deltas}\label{distribution-of-deltas}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{parsed\_labels }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \AttributeTok{delta      =} \StringTok{"delta"}\NormalTok{,}
+  \AttributeTok{delta\_spe  =} \StringTok{"delta[}\SpecialCharTok{\textbackslash{}"}\StringTok{spe}\SpecialCharTok{\textbackslash{}"}\StringTok{]"}\NormalTok{,}
+  \AttributeTok{delta\_rd   =} \StringTok{"delta[}\SpecialCharTok{\textbackslash{}"}\StringTok{rd}\SpecialCharTok{\textbackslash{}"}\StringTok{]"}\NormalTok{,}
+  \AttributeTok{Delta\_rd   =} \StringTok{"Delta[}\SpecialCharTok{\textbackslash{}"}\StringTok{rd}\SpecialCharTok{\textbackslash{}"}\StringTok{]"}
+\NormalTok{)}
+\NormalTok{fill\_colors }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}
+  \AttributeTok{delta      =} \StringTok{"red"}\NormalTok{,}
+  \AttributeTok{delta\_spe  =} \StringTok{"blue"}\NormalTok{,}
+  \AttributeTok{delta\_rd   =} \StringTok{"green"}\NormalTok{,}
+  \AttributeTok{Delta\_rd   =} \StringTok{"purple"}
+\NormalTok{)}
+
+\NormalTok{paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(delta\_spe, delta\_rd, }\AttributeTok{delta =}\NormalTok{ group.delta\_value, Delta\_rd) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{pivot\_longer}\NormalTok{(}\FunctionTok{everything}\NormalTok{(), }\AttributeTok{names\_to =} \StringTok{"measure"}\NormalTok{, }\AttributeTok{values\_to =} \StringTok{"value"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{measure =} \FunctionTok{factor}\NormalTok{(measure, }\AttributeTok{levels =} \FunctionTok{names}\NormalTok{(parsed\_labels))) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ggplot}\NormalTok{(}\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ value, }\AttributeTok{fill =}\NormalTok{ measure)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{bins =} \DecValTok{20}\NormalTok{, }\AttributeTok{color =} \StringTok{"black"}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{ measure, }\AttributeTok{scales =} \StringTok{"free"}\NormalTok{, }\AttributeTok{labeller =} \FunctionTok{as\_labeller}\NormalTok{(parsed\_labels, label\_parsed)) }\SpecialCharTok{+}
+  \FunctionTok{scale\_fill\_manual}\NormalTok{(}\AttributeTok{values =}\NormalTok{ fill\_colors) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \ConstantTok{NULL}\NormalTok{, }\AttributeTok{y =} \StringTok{"Count"}\NormalTok{, }\AttributeTok{title =} \StringTok{"Distribution of δ (and Related Game Metadata)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{3a_analysis_files/figure-latex/histogram-deltas-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(}\StringTok{"../figures/histograms\_deltas.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{10}\NormalTok{, }\AttributeTok{height =} \DecValTok{6}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Distribution of g and l}\label{distribution-of-g-and-l}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{gl\_hist\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(g, l) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{pivot\_longer}\NormalTok{(}\AttributeTok{cols =} \FunctionTok{everything}\NormalTok{(), }\AttributeTok{names\_to =} \StringTok{"component"}\NormalTok{, }\AttributeTok{values\_to =} \StringTok{"value"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{component =} \FunctionTok{factor}\NormalTok{(component, }\AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"g"}\NormalTok{, }\StringTok{"l"}\NormalTok{)))}
+
+\NormalTok{bin\_width }\OtherTok{\textless{}{-}} \FloatTok{0.5}
+\NormalTok{x\_min }\OtherTok{\textless{}{-}} \FunctionTok{floor}\NormalTok{(}\FunctionTok{min}\NormalTok{(gl\_hist\_df}\SpecialCharTok{$}\NormalTok{value, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{/}\NormalTok{ bin\_width) }\SpecialCharTok{*}\NormalTok{ bin\_width}
+\NormalTok{x\_max }\OtherTok{\textless{}{-}} \FunctionTok{ceiling}\NormalTok{(}\FunctionTok{max}\NormalTok{(gl\_hist\_df}\SpecialCharTok{$}\NormalTok{value, }\AttributeTok{na.rm =} \ConstantTok{TRUE}\NormalTok{) }\SpecialCharTok{/}\NormalTok{ bin\_width) }\SpecialCharTok{*}\NormalTok{ bin\_width}
+\NormalTok{breaks\_seq }\OtherTok{\textless{}{-}} \FunctionTok{seq}\NormalTok{(x\_min, x\_max, }\AttributeTok{by =}\NormalTok{ bin\_width)}
+
+\FunctionTok{ggplot}\NormalTok{(gl\_hist\_df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ value, }\AttributeTok{fill =}\NormalTok{ component)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_histogram}\NormalTok{(}
+    \AttributeTok{breaks =}\NormalTok{ breaks\_seq,}
+    \AttributeTok{color =} \StringTok{"black"}\NormalTok{,}
+    \AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{,}
+    \AttributeTok{boundary =} \DecValTok{0}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{ component, }\AttributeTok{labeller =}\NormalTok{ label\_parsed) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{x =} \ConstantTok{NULL}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Count"}\NormalTok{,}
+    \AttributeTok{title =} \StringTok{"Distribution of g and l"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{3a_analysis_files/figure-latex/histogram-gl-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(}\StringTok{"../figures/histogram\_gl.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{10}\NormalTok{, }\AttributeTok{height =} \DecValTok{4}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Player 1 Cooperation
+Metrics}\label{player-1-cooperation-metrics}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{paired\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{p1\_coop\_rate =} \FunctionTok{map\_dbl}\NormalTok{(decision\_tuple, }\SpecialCharTok{\textasciitilde{}} \FunctionTok{mean}\NormalTok{(}\FunctionTok{map\_dbl}\NormalTok{(.x, }\DecValTok{1}\NormalTok{))),}
+    \AttributeTok{p1\_r1\_coop   =} \FunctionTok{map\_int}\NormalTok{(decision\_tuple, }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .x[[}\DecValTok{1}\NormalTok{]][}\DecValTok{1}\NormalTok{])}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Binned Cooperation Rates by
+Delta}\label{binned-cooperation-rates-by-delta}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{delta\_vals }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\FunctionTok{is.na}\NormalTok{(group.delta\_value)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(}\AttributeTok{delta =}\NormalTok{ group.delta\_value) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}
+    \AttributeTok{bin\_center =} \FunctionTok{mean}\NormalTok{(delta),}
+    \AttributeTok{coop\_rate  =} \FunctionTok{mean}\NormalTok{(p1\_coop\_rate),}
+    \AttributeTok{r1\_coop    =} \FunctionTok{mean}\NormalTok{(p1\_r1\_coop),}
+    \AttributeTok{measure =} \StringTok{"delta"}\NormalTok{,}
+    \AttributeTok{.groups =} \StringTok{"drop"}
+\NormalTok{  )}
+
+\NormalTok{other\_binned }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(p1\_coop\_rate, p1\_r1\_coop, delta\_spe, delta\_rd, Delta\_rd) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{pivot\_longer}\NormalTok{(}\FunctionTok{c}\NormalTok{(delta\_spe, delta\_rd, Delta\_rd), }\AttributeTok{names\_to =} \StringTok{"measure"}\NormalTok{, }\AttributeTok{values\_to =} \StringTok{"x"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(measure) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{bin =} \FunctionTok{ntile}\NormalTok{(x, }\DecValTok{10}\NormalTok{)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(measure, bin) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}
+    \AttributeTok{bin\_center =} \FunctionTok{mean}\NormalTok{(x),}
+    \AttributeTok{coop\_rate  =} \FunctionTok{mean}\NormalTok{(p1\_coop\_rate),}
+    \AttributeTok{r1\_coop    =} \FunctionTok{mean}\NormalTok{(p1\_r1\_coop),}
+    \AttributeTok{.groups =} \StringTok{"drop"}
+\NormalTok{  )}
+
+\NormalTok{binned\_df }\OtherTok{\textless{}{-}} \FunctionTok{bind\_rows}\NormalTok{(delta\_vals, other\_binned) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{measure =} \FunctionTok{factor}\NormalTok{(measure, }\AttributeTok{levels =} \FunctionTok{names}\NormalTok{(parsed\_labels)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(binned\_df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ bin\_center, }\AttributeTok{y =}\NormalTok{ coop\_rate, }\AttributeTok{color =}\NormalTok{ measure)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{size =} \DecValTok{2}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{ measure, }\AttributeTok{scales =} \StringTok{"free\_x"}\NormalTok{, }\AttributeTok{labeller =} \FunctionTok{as\_labeller}\NormalTok{(parsed\_labels, label\_parsed)) }\SpecialCharTok{+}
+  \FunctionTok{scale\_color\_manual}\NormalTok{(}\AttributeTok{values =}\NormalTok{ fill\_colors) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \ConstantTok{NULL}\NormalTok{, }\AttributeTok{y =} \StringTok{"P1 Cooperation Rate"}\NormalTok{, }\AttributeTok{title =} \StringTok{"P1 Cooperation Rate by δ (and Related Game Metadata)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{3a_analysis_files/figure-latex/plot-coop-rate-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(}\StringTok{"../figures/p1\_coop\_rate\_binned.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{10}\NormalTok{, }\AttributeTok{height =} \DecValTok{6}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(binned\_df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ bin\_center, }\AttributeTok{y =}\NormalTok{ r1\_coop, }\AttributeTok{color =}\NormalTok{ measure)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{size =} \DecValTok{2}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{facet\_wrap}\NormalTok{(}\SpecialCharTok{\textasciitilde{}}\NormalTok{ measure, }\AttributeTok{scales =} \StringTok{"free\_x"}\NormalTok{, }\AttributeTok{labeller =} \FunctionTok{as\_labeller}\NormalTok{(parsed\_labels, label\_parsed)) }\SpecialCharTok{+}
+  \FunctionTok{scale\_color\_manual}\NormalTok{(}\AttributeTok{values =}\NormalTok{ fill\_colors) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{x =} \ConstantTok{NULL}\NormalTok{, }\AttributeTok{y =} \StringTok{"P1 Round 1 Cooperation"}\NormalTok{, }\AttributeTok{title =} \StringTok{"P1 First{-}Round Cooperation by δ (and Related Game Metadata)"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{() }\SpecialCharTok{+}
+  \FunctionTok{theme}\NormalTok{(}\AttributeTok{legend.position =} \StringTok{"none"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{3a_analysis_files/figure-latex/plot-r1-coop-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(}\StringTok{"../figures/p1\_r1\_coop\_binned.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{10}\NormalTok{, }\AttributeTok{height =} \DecValTok{6}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Surplus Left on the Table}\label{surplus-left-on-the-table}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{paired\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{alternate\_better    =}\NormalTok{ (T }\SpecialCharTok{+}\NormalTok{ S) }\SpecialCharTok{\textgreater{}}\NormalTok{ (}\DecValTok{2} \SpecialCharTok{*}\NormalTok{ R),}
+    \AttributeTok{num\_rounds          =} \FunctionTok{map\_int}\NormalTok{(payoff\_tuple, length),}
+    \AttributeTok{max\_per\_round       =} \FunctionTok{if\_else}\NormalTok{(alternate\_better, T }\SpecialCharTok{+}\NormalTok{ S, }\DecValTok{2} \SpecialCharTok{*}\NormalTok{ R),}
+    \AttributeTok{max\_total\_payoff    =}\NormalTok{ max\_per\_round }\SpecialCharTok{*}\NormalTok{ num\_rounds,}
+    \AttributeTok{actual\_total\_payoff =} \FunctionTok{map\_dbl}\NormalTok{(payoff\_tuple, }\SpecialCharTok{\textasciitilde{}} \FunctionTok{sum}\NormalTok{(}\FunctionTok{map\_dbl}\NormalTok{(.x, sum))),}
+    \AttributeTok{surplus\_left        =}\NormalTok{ max\_total\_payoff }\SpecialCharTok{{-}}\NormalTok{ actual\_total\_payoff}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggplot}\NormalTok{(paired\_df, }\FunctionTok{aes}\NormalTok{(surplus\_left)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_histogram}\NormalTok{(}\AttributeTok{bins =} \DecValTok{20}\NormalTok{, }\AttributeTok{alpha =} \FloatTok{0.5}\NormalTok{) }\SpecialCharTok{+} 
+  \FunctionTok{labs}\NormalTok{(}\AttributeTok{title =} \StringTok{"Distribution of Payoff Surplus Left on the Table"}\NormalTok{, }\AttributeTok{x =} \StringTok{"Surplus"}\NormalTok{, }\AttributeTok{y =} \StringTok{"Count"}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{3a_analysis_files/figure-latex/surplus-histogram-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(}\StringTok{"../figures/surplus\_histogram.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{8}\NormalTok{, }\AttributeTok{height =} \DecValTok{4}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{surplus\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(surplus\_left, p1\_coop\_rate, p1\_r1\_coop, delta\_rd, delta\_spe, group.delta\_value)}
+
+\CommentTok{\# Surplus vs P1 coop rate}
+\FunctionTok{ggplot}\NormalTok{(surplus\_df, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ p1\_coop\_rate, }\AttributeTok{y =}\NormalTok{ surplus\_left)) }\SpecialCharTok{+}
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{alpha =} \FloatTok{0.3}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{x =} \StringTok{"P1 Cooperation Rate"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Surplus Left"}\NormalTok{,}
+    \AttributeTok{title =} \StringTok{"Surplus Left vs P1 Cooperation Rate"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_bw}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\pandocbounded{\includegraphics[keepaspectratio]{3a_analysis_files/figure-latex/surplus-cooperation-1.pdf}}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{ggsave}\NormalTok{(}\StringTok{"../figures/surplus\_vs\_p1\_coop\_rate.png"}\NormalTok{, }\AttributeTok{width =} \DecValTok{6}\NormalTok{, }\AttributeTok{height =} \DecValTok{5}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Memory-1 Histories}\label{memory-1-histories}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{extract\_history }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(seq) \{}
+  \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{length}\NormalTok{(seq) }\SpecialCharTok{\textless{}} \DecValTok{1}\NormalTok{) }\FunctionTok{return}\NormalTok{(}\FunctionTok{tibble}\NormalTok{(}\AttributeTok{previous\_pair =} \FunctionTok{character}\NormalTok{(), }\AttributeTok{next\_pair =} \FunctionTok{character}\NormalTok{(), }\AttributeTok{next\_p1 =} \FunctionTok{integer}\NormalTok{()))}
+  
+\NormalTok{  history }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{(}
+    \AttributeTok{previous\_pair =} \StringTok{"initial"}\NormalTok{,}
+    \AttributeTok{next\_pair =} \FunctionTok{paste0}\NormalTok{(seq[[}\DecValTok{1}\NormalTok{]], }\AttributeTok{collapse =} \StringTok{""}\NormalTok{),}
+    \AttributeTok{next\_p1 =}\NormalTok{ seq[[}\DecValTok{1}\NormalTok{]][}\DecValTok{1}\NormalTok{]}
+\NormalTok{  )}
+  
+  \ControlFlowTok{if}\NormalTok{ (}\FunctionTok{length}\NormalTok{(seq) }\SpecialCharTok{\textgreater{}=} \DecValTok{2}\NormalTok{) \{}
+\NormalTok{    after }\OtherTok{\textless{}{-}} \FunctionTok{tibble}\NormalTok{(}
+      \AttributeTok{previous\_pair =} \FunctionTok{map\_chr}\NormalTok{(seq[}\SpecialCharTok{{-}}\FunctionTok{length}\NormalTok{(seq)], }\SpecialCharTok{\textasciitilde{}} \FunctionTok{paste0}\NormalTok{(.x, }\AttributeTok{collapse =} \StringTok{""}\NormalTok{)),}
+      \AttributeTok{next\_pair     =} \FunctionTok{map\_chr}\NormalTok{(seq[}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{], }\SpecialCharTok{\textasciitilde{}} \FunctionTok{paste0}\NormalTok{(.x, }\AttributeTok{collapse =} \StringTok{""}\NormalTok{)),}
+      \AttributeTok{next\_p1       =} \FunctionTok{map\_int}\NormalTok{(seq[}\SpecialCharTok{{-}}\DecValTok{1}\NormalTok{], }\SpecialCharTok{\textasciitilde{}}\NormalTok{ .x[}\DecValTok{1}\NormalTok{])}
+\NormalTok{    )}
+\NormalTok{    history }\OtherTok{\textless{}{-}} \FunctionTok{bind\_rows}\NormalTok{(history, after)}
+\NormalTok{  \}}
+  \FunctionTok{return}\NormalTok{(history)}
+\NormalTok{\}}
+
+\NormalTok{history\_df }\OtherTok{\textless{}{-}}\NormalTok{ paired\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{transitions =} \FunctionTok{map}\NormalTok{(decision\_tuple, extract\_history)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{unnest}\NormalTok{(transitions)}
+
+\NormalTok{label\_binary\_pair }\OtherTok{\textless{}{-}} \ControlFlowTok{function}\NormalTok{(pair) \{}
+  \FunctionTok{recode}\NormalTok{(pair,}
+         \StringTok{"11"} \OtherTok{=} \StringTok{"CC"}\NormalTok{, }\StringTok{"10"} \OtherTok{=} \StringTok{"CD"}\NormalTok{, }\StringTok{"01"} \OtherTok{=} \StringTok{"DC"}\NormalTok{, }\StringTok{"00"} \OtherTok{=} \StringTok{"DD"}\NormalTok{,}
+         \StringTok{"initial"} \OtherTok{=} \StringTok{"initial"}\NormalTok{, }\AttributeTok{.default =}\NormalTok{ pair)}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\subsubsection{Transition matrix}\label{transition-matrix}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\DocumentationTok{\#\# Transition matrix over joint actions}
+\NormalTok{transition\_summary }\OtherTok{\textless{}{-}}\NormalTok{ history\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{filter}\NormalTok{(previous\_pair }\SpecialCharTok{!=} \StringTok{"initial"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(previous\_pair, next\_pair) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{N =} \FunctionTok{n}\NormalTok{(), }\AttributeTok{.groups =} \StringTok{"drop"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(previous\_pair) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{share =}\NormalTok{ N }\SpecialCharTok{/} \FunctionTok{sum}\NormalTok{(N)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{ungroup}\NormalTok{() }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}
+    \AttributeTok{previous\_pair =} \FunctionTok{label\_binary\_pair}\NormalTok{(previous\_pair),}
+    \AttributeTok{next\_pair     =} \FunctionTok{label\_binary\_pair}\NormalTok{(next\_pair)}
+\NormalTok{  )}
+
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(}
+\NormalTok{  transition\_summary }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{arrange}\NormalTok{(previous\_pair, next\_pair) }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{mutate}\NormalTok{(}
+      \AttributeTok{N =}\NormalTok{ scales}\SpecialCharTok{::}\FunctionTok{comma}\NormalTok{(N),}
+      \AttributeTok{share =} \FunctionTok{sprintf}\NormalTok{(}\StringTok{"\%.1f\%\%"}\NormalTok{, share }\SpecialCharTok{*} \DecValTok{100}\NormalTok{)}
+\NormalTok{    ),}
+  \AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"Previous State"}\NormalTok{, }\StringTok{"Next State"}\NormalTok{, }\StringTok{"N"}\NormalTok{, }\StringTok{"Share"}\NormalTok{)}
+\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}llll@{}}
+\toprule\noalign{}
+Previous State & Next State & N & Share \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+CC & CC & 8,934 & 77.6\% \\
+CC & CD & 1,104 & 9.6\% \\
+CC & DC & 1,104 & 9.6\% \\
+CC & DD & 378 & 3.3\% \\
+CD & CC & 664 & 16.7\% \\
+CD & CD & 1,136 & 28.5\% \\
+CD & DC & 749 & 18.8\% \\
+CD & DD & 1,438 & 36.1\% \\
+DC & CC & 664 & 16.7\% \\
+DC & CD & 749 & 18.8\% \\
+DC & DC & 1,136 & 28.5\% \\
+DC & DD & 1,438 & 36.1\% \\
+DD & CC & 436 & 6.6\% \\
+DD & CD & 920 & 14.0\% \\
+DD & DC & 920 & 14.0\% \\
+DD & DD & 4,314 & 65.5\% \\
+\end{longtable}
+
+\subsubsection{Both-Coop Rates by Previous
+State}\label{both-coop-rates-by-previous-state}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{history\_both\_summary }\OtherTok{\textless{}{-}}\NormalTok{ history\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(previous\_pair) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{N =} \FunctionTok{n}\NormalTok{(), }\AttributeTok{share\_both\_coop =} \FunctionTok{mean}\NormalTok{(next\_pair }\SpecialCharTok{==} \StringTok{"11"}\NormalTok{), }\AttributeTok{.groups =} \StringTok{"drop"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{bind\_rows}\NormalTok{(}
+    \FunctionTok{tibble}\NormalTok{(}\AttributeTok{previous\_pair =} \StringTok{"Total"}\NormalTok{, }\AttributeTok{N =} \FunctionTok{nrow}\NormalTok{(history\_df), }\AttributeTok{share\_both\_coop =} \FunctionTok{mean}\NormalTok{(history\_df}\SpecialCharTok{$}\NormalTok{next\_pair }\SpecialCharTok{==} \StringTok{"11"}\NormalTok{))}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{previous\_pair =} \FunctionTok{label\_binary\_pair}\NormalTok{(previous\_pair)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{factor}\NormalTok{(previous\_pair, }\AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"CC"}\NormalTok{, }\StringTok{"CD"}\NormalTok{, }\StringTok{"DC"}\NormalTok{, }\StringTok{"DD"}\NormalTok{, }\StringTok{"initial"}\NormalTok{, }\StringTok{"Total"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{share\_both\_coop =} \FunctionTok{sprintf}\NormalTok{(}\StringTok{"\%.1f\%\%"}\NormalTok{, share\_both\_coop }\SpecialCharTok{*} \DecValTok{100}\NormalTok{), }\AttributeTok{N =}\NormalTok{ scales}\SpecialCharTok{::}\FunctionTok{comma}\NormalTok{(N))}
+
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(history\_both\_summary, }\AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"Previous State"}\NormalTok{, }\StringTok{"N"}\NormalTok{, }\StringTok{"Share Both Cooperate"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule\noalign{}
+Previous State & N & Share Both Cooperate \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+CC & 11,520 & 77.6\% \\
+CD & 3,987 & 16.7\% \\
+DC & 3,987 & 16.7\% \\
+DD & 6,590 & 6.6\% \\
+initial & 6,844 & 59.5\% \\
+Total & 32,928 & 44.9\% \\
+\end{longtable}
+
+\subsubsection{P1-Coop Rates by Previous
+State}\label{p1-coop-rates-by-previous-state}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{history\_p1\_summary }\OtherTok{\textless{}{-}}\NormalTok{ history\_df }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(previous\_pair) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarise}\NormalTok{(}\AttributeTok{N =} \FunctionTok{n}\NormalTok{(), }\AttributeTok{share\_p1\_coop =} \FunctionTok{mean}\NormalTok{(next\_p1), }\AttributeTok{.groups =} \StringTok{"drop"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{bind\_rows}\NormalTok{(}
+    \FunctionTok{tibble}\NormalTok{(}\AttributeTok{previous\_pair =} \StringTok{"Total"}\NormalTok{, }\AttributeTok{N =} \FunctionTok{nrow}\NormalTok{(history\_df), }\AttributeTok{share\_p1\_coop =} \FunctionTok{mean}\NormalTok{(history\_df}\SpecialCharTok{$}\NormalTok{next\_p1))}
+\NormalTok{  ) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{previous\_pair =} \FunctionTok{label\_binary\_pair}\NormalTok{(previous\_pair)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{arrange}\NormalTok{(}\FunctionTok{factor}\NormalTok{(previous\_pair, }\AttributeTok{levels =} \FunctionTok{c}\NormalTok{(}\StringTok{"CC"}\NormalTok{, }\StringTok{"CD"}\NormalTok{, }\StringTok{"DC"}\NormalTok{, }\StringTok{"DD"}\NormalTok{, }\StringTok{"initial"}\NormalTok{, }\StringTok{"Total"}\NormalTok{))) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{share\_p1\_coop =} \FunctionTok{sprintf}\NormalTok{(}\StringTok{"\%.1f\%\%"}\NormalTok{, share\_p1\_coop }\SpecialCharTok{*} \DecValTok{100}\NormalTok{), }\AttributeTok{N =}\NormalTok{ scales}\SpecialCharTok{::}\FunctionTok{comma}\NormalTok{(N))}
+
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(history\_p1\_summary, }\AttributeTok{col.names =} \FunctionTok{c}\NormalTok{(}\StringTok{"Previous State"}\NormalTok{, }\StringTok{"N"}\NormalTok{, }\StringTok{"Share P1 Cooperate"}\NormalTok{))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{longtable}[]{@{}lll@{}}
+\toprule\noalign{}
+Previous State & N & Share P1 Cooperate \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+CC & 11,520 & 87.1\% \\
+CD & 3,987 & 45.1\% \\
+DC & 3,987 & 35.4\% \\
+DD & 6,590 & 20.6\% \\
+initial & 6,844 & 77.0\% \\
+Total & 32,928 & 60.4\% \\
+\end{longtable}
+
+\subsection{Regressions}\label{regressions}
+
+\subsubsection{P1 Cooperation Rate \textasciitilde{}
+Delta\_rd}\label{p1-cooperation-rate-delta_rd}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{p1\_coop\_rate\_model }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(p1\_coop\_rate }\SpecialCharTok{\textasciitilde{}}\NormalTok{ Delta\_rd, }\AttributeTok{data =}\NormalTok{ paired\_df)}
+\FunctionTok{summary}\NormalTok{(p1\_coop\_rate\_model)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Call:
+## lm(formula = p1_coop_rate ~ Delta_rd, data = paired_df)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -0.7291 -0.3205  0.2797  0.3204  0.3649 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept) 0.672489   0.004972 135.266  < 2e-16 ***
+## Delta_rd    0.081514   0.018013   4.525 6.14e-06 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.3826 on 6842 degrees of freedom
+## Multiple R-squared:  0.002984,   Adjusted R-squared:  0.002838 
+## F-statistic: 20.48 on 1 and 6842 DF,  p-value: 6.136e-06
+\end{verbatim}
+
+\subsubsection{P1 Round 1 Cooperation \textasciitilde{}
+Delta\_rd}\label{p1-round-1-cooperation-delta_rd}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{p1\_r1\_coop\_model }\OtherTok{\textless{}{-}} \FunctionTok{lm}\NormalTok{(p1\_r1\_coop }\SpecialCharTok{\textasciitilde{}}\NormalTok{ Delta\_rd, }\AttributeTok{data =}\NormalTok{ paired\_df)}
+\FunctionTok{summary}\NormalTok{(p1\_r1\_coop\_model)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Call:
+## lm(formula = p1_r1_coop ~ Delta_rd, data = paired_df)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -0.8528  0.1690  0.2168  0.2439  0.2965 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept) 0.757862   0.005455 138.922  < 2e-16 ***
+## Delta_rd    0.118668   0.019766   6.004 2.03e-09 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.4199 on 6842 degrees of freedom
+## Multiple R-squared:  0.00524,    Adjusted R-squared:  0.005095 
+## F-statistic: 36.04 on 1 and 6842 DF,  p-value: 2.028e-09
+\end{verbatim}
+
+\end{document}

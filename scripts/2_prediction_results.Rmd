@@ -1,0 +1,220 @@
+---
+title: "P1 Next-Action Prediction Results"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+```
+
+## Overview
+
+We predict whether P1 cooperates in round $t$ of a supergame using several
+model families.  The **baseline** models use game metadata ($g$, $l$,
+$\delta$) plus P1's own past-action n-grams (last 1--5 actions, one-hot
+encoded).  These are fit with **OLS**, **Lasso**, and **SVR** (RBF
+kernel approximation + LinearSVR).
+
+**IRL-SG** is the 6-parameter learning model of Fudenberg \& Karreskog
+Rehbinder (2024, Appendix D): a logistic initial-round reinforcement learner
+with semi-grim memory-1 transitions at non-initial rounds.  We report two
+variants: **IRL-SG (defaults)** uses the paper's published parameters
+$(\alpha, \beta, \lambda, p_{CC}, p_{CD/DC}, p_{DD})$, while
+**IRL-SG (MLE)** re-estimates those parameters via maximum likelihood on
+the training set---as the paper does in its one-step-ahead prediction
+exercise.
+
+Train/test split is at the **sequence level** (80/20 of supergame rows) for
+the baseline models and at the **session level** (80/20 of sessions) for
+IRL-SG. Both are stratified on unique $(g, l, \delta)$ treatments.
+
+```{r load-data}
+results_dir <- "../results/next_action_prediction"
+csv_files <- list.files(results_dir, pattern = "^next_action_results_model_.*\\.csv$", full.names = TRUE)
+results <- bind_rows(lapply(csv_files, read_csv, show_col_types = FALSE)) %>%
+  distinct(feature_spec, model, .keep_all = TRUE)
+
+spec_order <- c("meta_only", paste0("meta_hist_", 1:5), "irl_sg", "irl_sg_mle")
+spec_labels <- c(
+  meta_only   = "g, l, \u03b4 only",
+  meta_hist_1 = "+ last 1",
+  meta_hist_2 = "+ last 2",
+  meta_hist_3 = "+ last 3",
+  meta_hist_4 = "+ last 4",
+  meta_hist_5 = "+ last 5",
+  irl_sg      = "IRL-SG (defaults)",
+  irl_sg_mle  = "IRL-SG (MLE)"
+)
+
+results <- results %>%
+  filter(feature_spec %in% spec_order) %>%
+  mutate(
+    feature_spec = factor(feature_spec, levels = spec_order),
+    feature_label = recode(feature_spec, !!!spec_labels),
+    feature_label = factor(feature_label, levels = spec_labels),
+    model = case_when(
+      model == "irl_sg_mle" ~ "IRL-SG (MLE)",
+      model == "irl_sg"     ~ "IRL-SG (defaults)",
+      TRUE                  ~ toupper(model)
+    )
+  )
+
+baseline <- results %>% filter(!grepl("IRL-SG", model))
+irl <- results %>% filter(grepl("IRL-SG", model))
+```
+
+## Sample sizes
+
+Longer n-gram requirements exclude shorter sequences.
+
+```{r sample-sizes}
+results %>%
+  distinct(feature_label, model, train_rows, test_rows) %>%
+  arrange(feature_label, model) %>%
+  mutate(across(c(train_rows, test_rows), scales::comma)) %>%
+  select(Features = feature_label, Model = model,
+         `Train rows` = train_rows, `Test rows` = test_rows) %>%
+  knitr::kable(align = "llrr")
+```
+
+## Out-of-sample accuracy
+
+```{r table-accuracy}
+results %>%
+  select(feature_label, model, test_accuracy) %>%
+  pivot_wider(names_from = model, values_from = test_accuracy) %>%
+  arrange(feature_label) %>%
+  mutate(across(-feature_label, ~ ifelse(is.na(.x), "", sprintf("%.2f%%", .x * 100)))) %>%
+  rename(Features = feature_label) %>%
+  knitr::kable(align = c("l", rep("r", ncol(.) - 1)))
+```
+
+```{r plot-accuracy, fig.width=8, fig.height=4.5}
+ggplot(results, aes(x = feature_label, y = test_accuracy, color = model, group = model)) +
+  geom_point(size = 3) +
+  geom_line(data = baseline) +
+  geom_point(data = irl, shape = 18, size = 5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0.6, 1)) +
+  labs(x = NULL, y = "Test Accuracy", color = "Model",
+       title = "Out-of-sample accuracy by feature set and model") +
+  theme_bw(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        legend.position = "top")
+
+ggsave("../figures/prediction_accuracy.png", width = 8, height = 4.5)
+```
+
+## Out-of-sample AUC
+
+```{r table-auc}
+results %>%
+  select(feature_label, model, test_auc) %>%
+  pivot_wider(names_from = model, values_from = test_auc) %>%
+  arrange(feature_label) %>%
+  mutate(across(-feature_label, ~ ifelse(is.na(.x), "", sprintf("%.4f", .x)))) %>%
+  rename(Features = feature_label) %>%
+  knitr::kable(align = c("l", rep("r", ncol(.) - 1)))
+```
+
+```{r plot-auc, fig.width=8, fig.height=4.5}
+ggplot(results, aes(x = feature_label, y = test_auc, color = model, group = model)) +
+  geom_point(size = 3) +
+  geom_line(data = baseline) +
+  geom_point(data = irl, shape = 18, size = 5) +
+  scale_y_continuous(limits = c(0.5, 1)) +
+  labs(x = NULL, y = "Test AUC", color = "Model",
+       title = "Out-of-sample AUC by feature set and model") +
+  theme_bw(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        legend.position = "top")
+
+ggsave("../figures/prediction_auc.png", width = 8, height = 4.5)
+```
+
+## Out-of-sample log loss
+
+```{r table-logloss}
+results %>%
+  select(feature_label, model, test_log_loss) %>%
+  pivot_wider(names_from = model, values_from = test_log_loss) %>%
+  arrange(feature_label) %>%
+  mutate(across(-feature_label, ~ ifelse(is.na(.x), "", sprintf("%.4f", .x)))) %>%
+  rename(Features = feature_label) %>%
+  knitr::kable(align = c("l", rep("r", ncol(.) - 1)))
+```
+
+```{r plot-logloss, fig.width=8, fig.height=4.5}
+ggplot(results, aes(x = feature_label, y = test_log_loss, color = model, group = model)) +
+  geom_point(size = 3) +
+  geom_line(data = baseline) +
+  geom_point(data = irl, shape = 18, size = 5) +
+  labs(x = NULL, y = "Test Log Loss", color = "Model",
+       title = "Out-of-sample log loss by feature set and model") +
+  theme_bw(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        legend.position = "top")
+
+ggsave("../figures/prediction_logloss.png", width = 8, height = 4.5)
+```
+
+## Out-of-sample MSE
+
+```{r table-mse}
+results %>%
+  select(feature_label, model, test_mse) %>%
+  pivot_wider(names_from = model, values_from = test_mse) %>%
+  arrange(feature_label) %>%
+  mutate(across(-feature_label, ~ ifelse(is.na(.x), "", sprintf("%.4f", .x)))) %>%
+  rename(Features = feature_label) %>%
+  knitr::kable(align = c("l", rep("r", ncol(.) - 1)))
+```
+
+```{r plot-mse, fig.width=8, fig.height=4.5}
+ggplot(results, aes(x = feature_label, y = test_mse, color = model, group = model)) +
+  geom_point(size = 3) +
+  geom_line(data = baseline) +
+  geom_point(data = irl, shape = 18, size = 5) +
+  labs(x = NULL, y = "Test MSE", color = "Model",
+       title = "Out-of-sample MSE by feature set and model") +
+  theme_bw(base_size = 13) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1),
+        legend.position = "top")
+
+ggsave("../figures/prediction_mse.png", width = 8, height = 4.5)
+```
+
+## In-sample vs out-of-sample (overfitting check)
+
+```{r table-in-vs-out}
+results %>%
+  select(feature_label, model, train_accuracy, test_accuracy) %>%
+  mutate(
+    gap = train_accuracy - test_accuracy,
+    across(c(train_accuracy, test_accuracy, gap), ~ sprintf("%.2f%%", .x * 100))
+  ) %>%
+  rename(Features = feature_label, Model = model,
+         `Train Acc` = train_accuracy, `Test Acc` = test_accuracy,
+         Gap = gap) %>%
+  knitr::kable(align = "llrrr")
+```
+
+```{r plot-overfit, fig.width=8, fig.height=4.5}
+results %>%
+  select(feature_label, model, train_accuracy, test_accuracy) %>%
+  pivot_longer(c(train_accuracy, test_accuracy), names_to = "split", values_to = "accuracy") %>%
+  mutate(split = recode(split, train_accuracy = "Train", test_accuracy = "Test")) %>%
+  ggplot(aes(x = feature_label, y = accuracy, color = model, linetype = split, group = interaction(model, split))) +
+    geom_point(size = 2.5) +
+    geom_line() +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0.6, 1)) +
+    labs(x = NULL, y = "Accuracy", color = "Model", linetype = "Split",
+         title = "Train vs test accuracy") +
+    theme_bw(base_size = 13) +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1),
+          legend.position = "top")
+
+ggsave("../figures/prediction_overfit.png", width = 8, height = 4.5)
+```

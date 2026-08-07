@@ -1,27 +1,85 @@
-# === Load libraries ===
+---
+title: "O-tree Data Analysis"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 library(jsonlite)
 library(arrow)
 library(tidyverse)
 library(ggplot2)
+```
 
-# === Load and preprocess data ===
-paired_df <- read_feather("data/player_pair_sequences.feather") %>%
+## Load and Preprocess Data
+
+```{r load-data}
+paired_df <- read_feather("../data/player_pair_sequences.feather") %>%
   mutate(
     decision_tuple = map(decision_tuple, ~ map(fromJSON(.x, simplifyVector = FALSE), unlist)),
     payoff_tuple   = map(payoff_tuple,   ~ map(fromJSON(.x, simplifyVector = FALSE), unlist)),
     timeout_occured = map(timeout_tuple, ~ map(fromJSON(.x, simplifyVector = FALSE), unlist))
   )
 
-# === Filter to rows where no timeouts occurred in any round ===
-paired_df <- paired_df %>%
-  filter(
-    map_lgl(timeout_occured, ~ all(flatten_int(.x) == 0))
+# paired_df <- paired_df %>%
+#   filter(
+#     map_lgl(timeout_occured, ~ all(flatten_int(.x) == 0))
+#   )
+
+if (!dir.exists("../figures")) dir.create("../figures")
+```
+
+## Data Overview
+
+```{r data-overview}
+n_sequences <- nrow(paired_df)
+n_participants <- n_distinct(paired_df$`player.prolific_id`)
+n_game_configs <- paired_df %>%
+  distinct(
+    group.game_payoff_cooperate_cooperate,
+    group.game_payoff_betrayed,
+    group.game_payoff_betray,
+    group.game_payoff_both_defect,
+    group.delta_value
+  ) %>%
+  nrow()
+seq_lengths <- map_int(paired_df$decision_tuple, length)
+avg_seq_length <- mean(seq_lengths)
+median_seq_length <- median(seq_lengths)
+p25_seq_length <- quantile(seq_lengths, 0.25)
+p75_seq_length <- quantile(seq_lengths, 0.75)
+p95_seq_length <- quantile(seq_lengths, 0.95)
+
+tibble(
+  Statistic = c(
+    "Total sequences",
+    "Unique participants",
+    "Unique (payoff matrix, δ) combinations",
+    "Average sequence length",
+    "Median sequence length",
+    "25th percentile length",
+    "75th percentile length",
+    "95th percentile length"
+  ),
+  Value = c(
+    scales::comma(n_sequences),
+    scales::comma(n_participants),
+    scales::comma(n_game_configs),
+    sprintf("%.1f rounds", avg_seq_length),
+    sprintf("%.0f rounds", median_seq_length),
+    sprintf("%.0f rounds", p25_seq_length),
+    sprintf("%.0f rounds", p75_seq_length),
+    sprintf("%.0f rounds", p95_seq_length)
   )
+) %>%
+  knitr::kable()
+```
 
+## Compute Delta Metrics
 
-if (!dir.exists("figures")) dir.create("figures")
-
-# === Compute delta metrics ===
+```{r delta-metrics}
 paired_df <- paired_df %>%
   mutate(
     R = group.game_payoff_cooperate_cooperate,
@@ -34,8 +92,11 @@ paired_df <- paired_df %>%
     delta_rd  = (g + l) / (1 + g + l),
     Delta_rd  = group.delta_value - delta_rd
   )
+```
 
-# === Histogram of deltas ===
+## Distribution of Deltas
+
+```{r histogram-deltas, fig.width=10, fig.height=6}
 parsed_labels <- c(
   delta      = "delta",
   delta_spe  = "delta[\"spe\"]",
@@ -61,15 +122,17 @@ paired_df %>%
   theme_bw() +
   theme(legend.position = "none")
 
-ggsave("figures/histograms_deltas.png", width = 10, height = 6)
+ggsave("../figures/histograms_deltas.png", width = 10, height = 6)
+```
 
-# === Histogram of g and l  ===
+## Distribution of g and l
+
+```{r histogram-gl, fig.width=10, fig.height=4}
 gl_hist_df <- paired_df %>%
   select(g, l) %>%
   pivot_longer(cols = everything(), names_to = "component", values_to = "value") %>%
   mutate(component = factor(component, levels = c("g", "l")))
 
-# Compute global bin breaks
 bin_width <- 0.5
 x_min <- floor(min(gl_hist_df$value, na.rm = TRUE) / bin_width) * bin_width
 x_max <- ceiling(max(gl_hist_df$value, na.rm = TRUE) / bin_width) * bin_width
@@ -91,18 +154,22 @@ ggplot(gl_hist_df, aes(x = value, fill = component)) +
   theme_bw() +
   theme(legend.position = "none")
 
-# Display and save
-ggsave("figures/histogram_gl.png", width = 10, height = 4)
+ggsave("../figures/histogram_gl.png", width = 10, height = 4)
+```
 
+## Player 1 Cooperation Metrics
 
-# === Player 1 cooperation metrics ===
+```{r p1-coop-metrics}
 paired_df <- paired_df %>%
   mutate(
     p1_coop_rate = map_dbl(decision_tuple, ~ mean(map_dbl(.x, 1))),
     p1_r1_coop   = map_int(decision_tuple, ~ .x[[1]][1])
   )
+```
 
-# === Binned cooperation rates by delta variant ===
+## Binned Cooperation Rates by Delta
+
+```{r binned-coop}
 delta_vals <- paired_df %>%
   filter(!is.na(group.delta_value)) %>%
   group_by(delta = group.delta_value) %>%
@@ -129,8 +196,9 @@ other_binned <- paired_df %>%
 
 binned_df <- bind_rows(delta_vals, other_binned) %>%
   mutate(measure = factor(measure, levels = names(parsed_labels)))
+```
 
-# === Plot binned cooperation rates ===
+```{r plot-coop-rate, fig.width=10, fig.height=6}
 ggplot(binned_df, aes(x = bin_center, y = coop_rate, color = measure)) +
   geom_point(size = 2) +
   facet_wrap(~ measure, scales = "free_x", labeller = as_labeller(parsed_labels, label_parsed)) +
@@ -139,8 +207,10 @@ ggplot(binned_df, aes(x = bin_center, y = coop_rate, color = measure)) +
   theme_bw() +
   theme(legend.position = "none")
 
-ggsave("figures/p1_coop_rate_binned.png", width = 10, height = 6)
+ggsave("../figures/p1_coop_rate_binned.png", width = 10, height = 6)
+```
 
+```{r plot-r1-coop, fig.width=10, fig.height=6}
 ggplot(binned_df, aes(x = bin_center, y = r1_coop, color = measure)) +
   geom_point(size = 2) +
   facet_wrap(~ measure, scales = "free_x", labeller = as_labeller(parsed_labels, label_parsed)) +
@@ -149,9 +219,12 @@ ggplot(binned_df, aes(x = bin_center, y = r1_coop, color = measure)) +
   theme_bw() +
   theme(legend.position = "none")
 
-ggsave("figures/p1_r1_coop_binned.png",width = 10, height = 6)
+ggsave("../figures/p1_r1_coop_binned.png", width = 10, height = 6)
+```
 
-# === Surplus on the table ===
+## Surplus Left on the Table
+
+```{r surplus}
 paired_df <- paired_df %>%
   mutate(
     alternate_better    = (T + S) > (2 * R),
@@ -161,29 +234,55 @@ paired_df <- paired_df %>%
     actual_total_payoff = map_dbl(payoff_tuple, ~ sum(map_dbl(.x, sum))),
     surplus_left        = max_total_payoff - actual_total_payoff
   )
+```
 
+```{r surplus-histogram, fig.width=8, fig.height=4}
 ggplot(paired_df, aes(surplus_left)) + 
-  geom_histogram(bins = 20, fill = "blue", color = "black", alpha = 0.5) + 
+  geom_histogram(bins = 20, alpha = 0.5) + 
   labs(title = "Distribution of Payoff Surplus Left on the Table", x = "Surplus", y = "Count") +
   theme_bw()
 
-ggsave("figures/surplus_histogram.png", width = 8, height = 4)
+ggsave("../figures/surplus_histogram.png", width = 8, height = 4)
+```
 
-# === Memory-1 Histories ===
+```{r surplus-cooperation, fig.width=8, fig.height=4}
+surplus_df <- paired_df %>%
+  select(surplus_left, p1_coop_rate, p1_r1_coop, delta_rd, delta_spe, group.delta_value)
+
+# Surplus vs P1 coop rate
+ggplot(surplus_df, aes(x = p1_coop_rate, y = surplus_left)) +
+  geom_point(alpha = 0.3) +
+  labs(
+    x = "P1 Cooperation Rate",
+    y = "Surplus Left",
+    title = "Surplus Left vs P1 Cooperation Rate"
+  ) +
+  theme_bw()
+
+ggsave("../figures/surplus_vs_p1_coop_rate.png", width = 6, height = 5)
+```
+
+## Memory-1 Histories
+
+```{r memory-1}
 extract_history <- function(seq) {
-  if (length(seq) < 1) return(tibble(previous_pair = character(), next_pair = character(), next_p1 = integer()))
-  
+  if (length(seq) < 1) {
+    return(tibble(previous_pair = character(), next_pair = character(), next_p1 = integer(), round_next = integer()))
+  }
+
   history <- tibble(
     previous_pair = "initial",
     next_pair = paste0(seq[[1]], collapse = ""),
-    next_p1 = seq[[1]][1]
+    next_p1 = seq[[1]][1],
+    round_next = 1L
   )
-  
+
   if (length(seq) >= 2) {
     after <- tibble(
       previous_pair = map_chr(seq[-length(seq)], ~ paste0(.x, collapse = "")),
       next_pair     = map_chr(seq[-1], ~ paste0(.x, collapse = "")),
-      next_p1       = map_int(seq[-1], ~ .x[1])
+      next_p1       = map_int(seq[-1], ~ .x[1]),
+      round_next    = 2L:length(seq)
     )
     history <- bind_rows(history, after)
   }
@@ -194,13 +293,43 @@ history_df <- paired_df %>%
   mutate(transitions = map(decision_tuple, extract_history)) %>%
   unnest(transitions)
 
-# Summarize both-coop and p1-coop rates
 label_binary_pair <- function(pair) {
   recode(pair,
          "11" = "CC", "10" = "CD", "01" = "DC", "00" = "DD",
          "initial" = "initial", .default = pair)
 }
+```
 
+### Transition matrix
+
+```{r transition-matrix}
+## Transition matrix over joint actions
+transition_summary <- history_df %>%
+  filter(previous_pair != "initial") %>%
+  group_by(previous_pair, next_pair) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  group_by(previous_pair) %>%
+  mutate(share = N / sum(N)) %>%
+  ungroup() %>%
+  mutate(
+    previous_pair = label_binary_pair(previous_pair),
+    next_pair     = label_binary_pair(next_pair)
+  )
+
+knitr::kable(
+  transition_summary %>%
+    arrange(previous_pair, next_pair) %>%
+    mutate(
+      N = scales::comma(N),
+      share = sprintf("%.1f%%", share * 100)
+    ),
+  col.names = c("Previous State", "Next State", "N", "Share")
+)
+```
+
+### Both-Coop Rates by Previous State
+
+```{r both-coop-summary}
 history_both_summary <- history_df %>%
   group_by(previous_pair) %>%
   summarise(N = n(), share_both_coop = mean(next_pair == "11"), .groups = "drop") %>%
@@ -211,6 +340,12 @@ history_both_summary <- history_df %>%
   arrange(factor(previous_pair, levels = c("CC", "CD", "DC", "DD", "initial", "Total"))) %>%
   mutate(share_both_coop = sprintf("%.1f%%", share_both_coop * 100), N = scales::comma(N))
 
+knitr::kable(history_both_summary, col.names = c("Previous State", "N", "Share Both Cooperate"))
+```
+
+### P1-Coop Rates by Previous State
+
+```{r p1-coop-summary}
 history_p1_summary <- history_df %>%
   group_by(previous_pair) %>%
   summarise(N = n(), share_p1_coop = mean(next_p1), .groups = "drop") %>%
@@ -221,28 +356,45 @@ history_p1_summary <- history_df %>%
   arrange(factor(previous_pair, levels = c("CC", "CD", "DC", "DD", "initial", "Total"))) %>%
   mutate(share_p1_coop = sprintf("%.1f%%", share_p1_coop * 100), N = scales::comma(N))
 
-# === Regressions and visualization ===
+knitr::kable(history_p1_summary, col.names = c("Previous State", "N", "Share P1 Cooperate"))
+```
+
+## Regressions
+
+### P1 Cooperation Rate \~ Delta_rd
+
+```{r reg-coop-rate}
 p1_coop_rate_model <- lm(p1_coop_rate ~ Delta_rd, data = paired_df)
 summary(p1_coop_rate_model)
+```
 
+### P1 Round 1 Cooperation \~ Delta_rd
+
+```{r reg-r1-coop}
 p1_r1_coop_model <- lm(p1_r1_coop ~ Delta_rd, data = paired_df)
 summary(p1_r1_coop_model)
+```
 
-paired_df %>%
-  select(Delta_rd, p1_coop_rate, p1_r1_coop) %>%
-  pivot_longer(c(p1_coop_rate, p1_r1_coop), names_to = "outcome", values_to = "value") %>%
-  ggplot(aes(x = Delta_rd, y = value)) +
-  geom_jitter(alpha = 0.3, height = 0.05, width = 0, size = 0.8) +
-  geom_smooth(method = "lm", color = "purple") +
-  facet_wrap(~ outcome, scales = "free_y", labeller = as_labeller(c(
-    p1_coop_rate = "Overall Coop Rate",
-    p1_r1_coop = "First-Round Coop (0/1)"
-  ))) +
-  labs(
-    x = expression(delta[RD]),
-    y = NULL,
-    title = expression("Cooperation Outcomes vs. " * Delta["rd"])
-  ) +
-  theme_bw()
+### Next P1 action (linear probability model)
 
-ggsave("figures/regression_outcomes.png", width = 10, height = 6)
+Round-\(t\) P1 cooperation (0/1) from `history_df`: **initial** means the first round of a supergame (no prior joint action); **non-initial** uses joint memory-1 state with **CC** (`11`) as the reference category, plus game parameters and `round_next` (round index within the supergame).
+
+```{r reg-next-p1-initial}
+history_initial <- history_df %>% filter(previous_pair == "initial")
+next_p1_initial_lpm <- lm(
+  next_p1 ~ Delta_rd + g + l + `group.delta_value`,
+  data = history_initial
+)
+summary(next_p1_initial_lpm)
+```
+
+```{r reg-next-p1-noninitial}
+history_noninitial <- history_df %>%
+  filter(previous_pair != "initial") %>%
+  mutate(previous_pair = relevel(factor(previous_pair), ref = "11"))
+next_p1_noninitial_lpm <- lm(
+  next_p1 ~ previous_pair + Delta_rd + g + l + `group.delta_value` + round_next,
+  data = history_noninitial
+)
+summary(next_p1_noninitial_lpm)
+```

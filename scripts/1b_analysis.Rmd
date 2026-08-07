@@ -1,0 +1,359 @@
+---
+title: "Historical Experimental Data Analysis"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(jsonlite)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Load and Preprocess Data
+
+```{r load-data}
+raw_df <- read_csv("../data/experimental_data.csv")
+
+paired_df <- raw_df %>%
+  mutate(
+    decision_tuple = map2(c, opp_c, ~ {
+      p1 <- fromJSON(.x)
+      p2 <- fromJSON(.y)
+      map2(p1, p2, ~ c(as.integer(.x == 1), as.integer(.y == 1)))
+    }),
+    payoff_tuple = map2(payoff, opp_c, ~ {
+      p1 <- fromJSON(.x)
+      p2_decisions <- fromJSON(.y)
+      map2(p1, p2_decisions, ~ c(.x, NA))
+    })
+  )
+
+if (!dir.exists("../figures")) dir.create("../figures")
+```
+
+## Data Overview
+
+```{r data-overview}
+n_sequences <- nrow(paired_df)
+n_participants <- n_distinct(paired_df$id)
+n_sessions <- n_distinct(paired_df$session)
+n_papers <- n_distinct(paired_df$paper)
+n_game_configs <- paired_df %>%
+  distinct(g, l, delta) %>%
+  nrow()
+avg_seq_length <- mean(map_int(paired_df$decision_tuple, length))
+
+tibble(
+  Statistic = c(
+    "Total sequences",
+    "Unique participants",
+    "Unique sessions",
+    "Source papers",
+    "Unique (g, l, δ) combinations",
+    "Average sequence length"
+  ),
+  Value = c(
+    scales::comma(n_sequences),
+    scales::comma(n_participants),
+    scales::comma(n_sessions),
+    scales::comma(n_papers),
+    scales::comma(n_game_configs),
+    sprintf("%.1f rounds", avg_seq_length)
+  )
+) %>%
+  knitr::kable()
+```
+
+### Source Papers
+
+```{r papers}
+paired_df %>%
+  count(paper, name = "N") %>%
+  arrange(desc(N)) %>%
+  mutate(N = scales::comma(N)) %>%
+  knitr::kable()
+```
+
+## Compute Delta Metrics
+
+```{r delta-metrics}
+paired_df <- paired_df %>%
+  mutate(
+    delta_spe = g / (1 + g),
+    delta_rd  = (g + l) / (1 + g + l),
+    Delta_rd  = delta - delta_rd
+  )
+```
+
+## Distribution of Deltas
+
+```{r histogram-deltas, fig.width=10, fig.height=6}
+parsed_labels <- c(
+  delta      = "delta",
+  delta_spe  = "delta[\"spe\"]",
+  delta_rd   = "delta[\"rd\"]",
+  Delta_rd   = "Delta[\"rd\"]"
+)
+fill_colors <- c(
+  delta      = "red",
+  delta_spe  = "blue",
+  delta_rd   = "green",
+  Delta_rd   = "purple"
+)
+
+paired_df %>%
+  select(delta_spe, delta_rd, delta, Delta_rd) %>%
+  pivot_longer(everything(), names_to = "measure", values_to = "value") %>%
+  mutate(measure = factor(measure, levels = names(parsed_labels))) %>%
+  ggplot(aes(x = value, fill = measure)) +
+  geom_histogram(bins = 20, color = "black", alpha = 0.5) +
+  facet_wrap(~ measure, scales = "free", labeller = as_labeller(parsed_labels, label_parsed)) +
+  scale_fill_manual(values = fill_colors) +
+  labs(x = NULL, y = "Count", title = "Distribution of δ (and Related Game Metadata)") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+ggsave("../figures/3b_histograms_deltas.png", width = 10, height = 6)
+```
+
+## Distribution of g and l
+
+```{r histogram-gl, fig.width=10, fig.height=4}
+gl_hist_df <- paired_df %>%
+  select(g, l) %>%
+  pivot_longer(cols = everything(), names_to = "component", values_to = "value") %>%
+  mutate(component = factor(component, levels = c("g", "l")))
+
+bin_width <- 0.5
+x_min <- floor(min(gl_hist_df$value, na.rm = TRUE) / bin_width) * bin_width
+x_max <- ceiling(max(gl_hist_df$value, na.rm = TRUE) / bin_width) * bin_width
+breaks_seq <- seq(x_min, x_max, by = bin_width)
+
+ggplot(gl_hist_df, aes(x = value, fill = component)) +
+  geom_histogram(
+    breaks = breaks_seq,
+    color = "black",
+    alpha = 0.5,
+    boundary = 0
+  ) +
+  facet_wrap(~ component, labeller = label_parsed) +
+  labs(
+    x = NULL,
+    y = "Count",
+    title = "Distribution of g and l"
+  ) +
+  theme_bw() +
+  theme(legend.position = "none")
+
+ggsave("../figures/3b_histogram_gl.png", width = 10, height = 4)
+```
+
+## Player 1 Cooperation Metrics
+
+```{r p1-coop-metrics}
+paired_df <- paired_df %>%
+  mutate(
+    p1_coop_rate = map_dbl(decision_tuple, ~ mean(map_dbl(.x, 1))),
+    p1_r1_coop   = map_int(decision_tuple, ~ .x[[1]][1])
+  )
+```
+
+## Binned Cooperation Rates by Delta
+
+```{r binned-coop}
+delta_vals <- paired_df %>%
+  filter(!is.na(delta)) %>%
+  group_by(delta) %>%
+  summarise(
+    bin_center = mean(delta),
+    coop_rate  = mean(p1_coop_rate),
+    r1_coop    = mean(p1_r1_coop),
+    measure = "delta",
+    .groups = "drop"
+  )
+
+other_binned <- paired_df %>%
+  select(p1_coop_rate, p1_r1_coop, delta_spe, delta_rd, Delta_rd) %>%
+  pivot_longer(c(delta_spe, delta_rd, Delta_rd), names_to = "measure", values_to = "x") %>%
+  group_by(measure) %>%
+  mutate(bin = ntile(x, 10)) %>%
+  group_by(measure, bin) %>%
+  summarise(
+    bin_center = mean(x),
+    coop_rate  = mean(p1_coop_rate),
+    r1_coop    = mean(p1_r1_coop),
+    .groups = "drop"
+  )
+
+binned_df <- bind_rows(delta_vals, other_binned) %>%
+  mutate(measure = factor(measure, levels = names(parsed_labels)))
+```
+
+```{r plot-coop-rate, fig.width=10, fig.height=6}
+ggplot(binned_df, aes(x = bin_center, y = coop_rate, color = measure)) +
+  geom_point(size = 2) +
+  facet_wrap(~ measure, scales = "free_x", labeller = as_labeller(parsed_labels, label_parsed)) +
+  scale_color_manual(values = fill_colors) +
+  labs(x = NULL, y = "P1 Cooperation Rate", title = "P1 Cooperation Rate by δ (and Related Game Metadata)") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+ggsave("../figures/3b_p1_coop_rate_binned.png", width = 10, height = 6)
+```
+
+```{r plot-r1-coop, fig.width=10, fig.height=6}
+ggplot(binned_df, aes(x = bin_center, y = r1_coop, color = measure)) +
+  geom_point(size = 2) +
+  facet_wrap(~ measure, scales = "free_x", labeller = as_labeller(parsed_labels, label_parsed)) +
+  scale_color_manual(values = fill_colors) +
+  labs(x = NULL, y = "P1 Round 1 Cooperation", title = "P1 First-Round Cooperation by δ (and Related Game Metadata)") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+ggsave("../figures/3b_p1_r1_coop_binned.png", width = 10, height = 6)
+```
+
+## Memory-1 Histories
+
+```{r memory-1}
+extract_history <- function(seq) {
+  if (length(seq) < 1) {
+    return(tibble(previous_pair = character(), next_pair = character(), next_p1 = integer(), round_next = integer()))
+  }
+
+  history <- tibble(
+    previous_pair = "initial",
+    next_pair = paste0(seq[[1]], collapse = ""),
+    next_p1 = seq[[1]][1],
+    round_next = 1L
+  )
+
+  if (length(seq) >= 2) {
+    after <- tibble(
+      previous_pair = map_chr(seq[-length(seq)], ~ paste0(.x, collapse = "")),
+      next_pair     = map_chr(seq[-1], ~ paste0(.x, collapse = "")),
+      next_p1       = map_int(seq[-1], ~ .x[1]),
+      round_next    = 2L:length(seq)
+    )
+    history <- bind_rows(history, after)
+  }
+  return(history)
+}
+
+history_df <- paired_df %>%
+  mutate(transitions = map(decision_tuple, extract_history)) %>%
+  unnest(transitions)
+
+label_binary_pair <- function(pair) {
+  recode(pair,
+         "11" = "CC", "10" = "CD", "01" = "DC", "00" = "DD",
+         "initial" = "initial", .default = pair)
+}
+```
+
+### Transition matrix
+
+```{r transition-matrix}
+transition_summary <- history_df %>%
+  filter(previous_pair != "initial") %>%
+  group_by(previous_pair, next_pair) %>%
+  summarise(N = n(), .groups = "drop") %>%
+  group_by(previous_pair) %>%
+  mutate(share = N / sum(N)) %>%
+  ungroup() %>%
+  mutate(
+    previous_pair = label_binary_pair(previous_pair),
+    next_pair     = label_binary_pair(next_pair)
+  )
+
+knitr::kable(
+  transition_summary %>%
+    arrange(previous_pair, next_pair) %>%
+    mutate(
+      N = scales::comma(N),
+      share = sprintf("%.1f%%", share * 100)
+    ),
+  col.names = c("Previous State", "Next State", "N", "Share")
+)
+```
+
+### Both-Coop Rates by Previous State
+
+```{r both-coop-summary}
+history_both_summary <- history_df %>%
+  group_by(previous_pair) %>%
+  summarise(N = n(), share_both_coop = mean(next_pair == "11"), .groups = "drop") %>%
+  bind_rows(
+    tibble(previous_pair = "Total", N = nrow(history_df), share_both_coop = mean(history_df$next_pair == "11"))
+  ) %>%
+  mutate(previous_pair = label_binary_pair(previous_pair)) %>%
+  arrange(factor(previous_pair, levels = c("CC", "CD", "DC", "DD", "initial", "Total"))) %>%
+  mutate(share_both_coop = sprintf("%.1f%%", share_both_coop * 100), N = scales::comma(N))
+
+knitr::kable(history_both_summary, col.names = c("Previous State", "N", "Share Both Cooperate"))
+```
+
+### P1-Coop Rates by Previous State
+
+```{r p1-coop-summary}
+history_p1_summary <- history_df %>%
+  group_by(previous_pair) %>%
+  summarise(N = n(), share_p1_coop = mean(next_p1), .groups = "drop") %>%
+  bind_rows(
+    tibble(previous_pair = "Total", N = nrow(history_df), share_p1_coop = mean(history_df$next_p1))
+  ) %>%
+  mutate(previous_pair = label_binary_pair(previous_pair)) %>%
+  arrange(factor(previous_pair, levels = c("CC", "CD", "DC", "DD", "initial", "Total"))) %>%
+  mutate(share_p1_coop = sprintf("%.1f%%", share_p1_coop * 100), N = scales::comma(N))
+
+knitr::kable(history_p1_summary, col.names = c("Previous State", "N", "Share P1 Cooperate"))
+```
+
+## Regressions
+
+### P1 Overall Cooperation Rate \~ Delta_rd + g + l + delta
+
+```{r reg-coop-rate}
+p1_coop_rate_model <- lm(
+  p1_coop_rate ~ Delta_rd + g + l + delta,
+  data = paired_df
+)
+summary(p1_coop_rate_model)
+```
+
+### P1 Round 1 Cooperation \~ Delta_rd + g + l + delta
+
+```{r reg-r1-coop}
+p1_r1_coop_model <- lm(
+  p1_r1_coop ~ Delta_rd + g + l + delta,
+  data = paired_df
+)
+summary(p1_r1_coop_model)
+```
+
+### Next P1 action (linear probability model)
+
+Round-\(t\) P1 cooperation (0/1) from `history_df`: **initial** means the first round of a supergame (no prior joint action); **non-initial** uses joint memory-1 state with **CC** (`11`) as the reference category, plus game parameters and `round_next` (round index within the supergame).
+
+```{r reg-next-p1-initial}
+history_initial <- history_df %>% filter(previous_pair == "initial")
+next_p1_initial_lpm <- lm(
+  next_p1 ~ Delta_rd + g + l + delta,
+  data = history_initial
+)
+summary(next_p1_initial_lpm)
+```
+
+```{r reg-next-p1-noninitial}
+history_noninitial <- history_df %>%
+  filter(previous_pair != "initial") %>%
+  mutate(previous_pair = relevel(factor(previous_pair), ref = "11"))
+next_p1_noninitial_lpm <- lm(
+  next_p1 ~ previous_pair + Delta_rd + g + l + delta + round_next,
+  data = history_noninitial
+)
+summary(next_p1_noninitial_lpm)
+```

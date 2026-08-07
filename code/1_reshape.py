@@ -1,4 +1,6 @@
 import pandas as pd
+from glob import glob
+from tqdm import tqdm
 
 def process_file(path):
     df = pd.read_csv(path)
@@ -68,14 +70,15 @@ def process_file(path):
     return prisoner_long_filtered
 
 
-# Process both files
-# df1 = process_file("data/pilot1.csv")
-# df2 = process_file("data/pilot2.csv")
-# df3 = process_file("data/pilot3.csv")
-df4 = process_file("data/pilot4.csv")
+# Process all files from pilot and main
+pilot_files = glob("data/pilot/*.csv")
+main_files = glob("data/main/*.csv")
 
-# Combine into one dataset
-combined = pd.concat([df4], ignore_index=True)
-combined.to_feather("data/pilot_combined_long.feather")
+all_files = pilot_files + main_files
+all_dfs = [process_file(f) for f in tqdm(all_files)]
+
+combined = pd.concat(all_dfs, ignore_index=True)
+combined.to_feather("data/data_combined_long.feather")
+combined.to_csv("data/data_combined_long.csv")
 
 

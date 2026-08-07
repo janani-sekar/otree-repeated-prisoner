@@ -1,0 +1,481 @@
+---
+title: "Bootstrap Test-Set Prediction Results"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(tidyverse)
+```
+
+## Overview
+
+Every model is fit **once** on the same session-level stratified train set
+(seed=0, test_size=0.2). The test set is then resampled with replacement
+$B = 1{,}000$ times to form 95% CIs on the held-out metrics.
+
+The results are split into two figures, each keeping its models on an
+apples-to-apples evaluation scope:
+
+- **Figure A — all rounds (incl. $t=0$, "no-mask")**: models evaluated on
+  every round including the opening action. These have no subject-level
+  memory at $t=0$: OLS with only $g, \ell, \delta$ and the Transformer
+  trained without round-1 masking.
+- **Figure B — rounds $t \ge 1$ only ("mask")**: models evaluated on rounds
+  with at least one prior joint action. Includes OLS with joint $n$-gram
+  history ($+$ last 1…5), the Transformer trained with round-1 labels
+  masked, and IRL-SG (defaults & MLE) scored on the same t≥1 rounds.
+
+IRL-SG does predict $t=0$ internally (using $\sigma(\alpha + \beta \Delta_{RD} +
+e_i)$), but its $t=0$ probabilities use an individual-specific experience
+term $e_i$ that accumulates across supergames — neither the OLS meta-only
+nor the Transformer have access to this. To keep Fig B comparable we score
+IRL-SG only on its in-game Markov-1 transitions ($t \ge 1$).
+
+### IRL-SG, briefly
+
+Six-parameter model.
+*Initial round* ($t=0$): $P(\text{coop}) = \sigma(\alpha + \beta \Delta_{RD} + e_i)$,
+with $e_i$ an individual experience term that updates from the prior
+supergame's initial action and total payoff.
+*In-game rounds* ($t \ge 1$): three fixed Markov-1 transition probabilities on
+the previous joint action — $p_{CC}, p_{CD\_DC}, p_{DD}$ — defining a
+"semi-grim" strategy.
+
+Parameters are either taken from the paper (defaults) or fit via
+`differential_evolution` MLE on the training set.
+
+## Load data
+
+```{r load-data}
+results_dir <- "../results/next_action_prediction"
+
+baseline_files <- list.files(results_dir, pattern = "^bootstrap_baseline_B.*\\.csv$",  full.names = TRUE)
+irl_files      <- list.files(results_dir, pattern = "^bootstrap_irl_sg_.*B.*\\.csv$",  full.names = TRUE)
+neural_files   <- list.files(results_dir, pattern = "^bootstrap_neural_.*B.*\\.csv$",  full.names = TRUE)
+
+bs_baseline <- bind_rows(lapply(baseline_files, read_csv, show_col_types = FALSE))
+bs_irl      <- if (length(irl_files)    > 0) bind_rows(lapply(irl_files,    read_csv, show_col_types = FALSE)) else NULL
+bs_neural   <- if (length(neural_files) > 0) bind_rows(lapply(neural_files, read_csv, show_col_types = FALSE)) else NULL
+
+spec_order  <- c("meta_only", paste0("meta_hist_", 1:5))
+spec_labels <- c(
+  meta_only   = "g, l, \u03b4 only",
+  meta_hist_1 = "+ last 1",
+  meta_hist_2 = "+ last 2",
+  meta_hist_3 = "+ last 3",
+  meta_hist_4 = "+ last 4",
+  meta_hist_5 = "+ last 5"
+)
+
+bs_baseline <- bs_baseline %>%
+  filter(feature_spec %in% spec_order) %>%
+  mutate(
+    feature_spec  = factor(feature_spec, levels = spec_order),
+    feature_label = recode(feature_spec, !!!spec_labels),
+    feature_label = factor(feature_label, levels = spec_labels),
+    model         = toupper(model)
+  )
+
+irl_model_map <- c(
+  irl_sg             = "IRL-SG (defaults)",
+  irl_sg_mle         = "IRL-SG (MLE)",
+  irl_sg_mask_r1     = "IRL-SG (defaults)",
+  irl_sg_mle_mask_r1 = "IRL-SG (MLE)"
+)
+neural_model_map <- c(
+  transformer_full    = "Transformer (no-mask)",
+  transformer_mask_r1 = "Transformer (mask r1)"
+)
+```
+
+## Sequence length distribution
+
+```{r load-raw}
+library(jsonlite)
+raw_df <- read_csv("../data/experimental_data.csv", show_col_types = FALSE) %>%
+  mutate(seq_len = map_int(c, ~ length(fromJSON(.x))))
+```
+
+```{r hist-seqlen, fig.width=8, fig.height=4}
+ggplot(raw_df, aes(x = seq_len)) +
+  geom_histogram(binwidth = 1, fill = "steelblue", alpha = 0.7, color = "white") +
+  labs(x = "Supergame length (rounds)", y = "Count",
+       title = "Distribution of supergame lengths") +
+  theme_bw(base_size = 13)
+
+ggsave("../figures/bootstrap_seqlen_hist.png", width = 8, height = 4)
+```
+
+```{r seqlen-summary}
+tibble(
+  Stat = c("Min", "25th pctl", "Median", "Mean", "75th pctl", "95th pctl", "Max"),
+  Value = c(
+    min(raw_df$seq_len),
+    quantile(raw_df$seq_len, 0.25),
+    median(raw_df$seq_len),
+    sprintf("%.1f", mean(raw_df$seq_len)),
+    quantile(raw_df$seq_len, 0.75),
+    quantile(raw_df$seq_len, 0.95),
+    max(raw_df$seq_len)
+  )
+) %>% knitr::kable()
+```
+
+## Accuracy and AUC by sequence length
+
+Out-of-sample metrics on the held-out session split, comparing the two
+Figure A ("no-mask") models that predict every round including $t=0$:
+**OLS (g, l, δ)** and **Transformer (no-mask)**. Points show mean
+accuracy / AUC per supergame length, weighted by rounds (larger
+buckets => larger markers). Red line is a LOESS smoother.
+
+```{r load-perround-preds}
+preds_ols <- read_csv(
+  "../results/next_action_prediction/test_preds_ols_meta_only_seed_0.csv",
+  show_col_types = FALSE
+) %>% mutate(model_label = "OLS (g, l, \u03b4)")
+
+preds_trf_path <- "../results/next_action_prediction/test_preds_transformer_full_seed_0.csv"
+preds_trf <- if (file.exists(preds_trf_path)) {
+  read_csv(preds_trf_path, show_col_types = FALSE) %>%
+    mutate(model_label = "Transformer (no-mask)")
+} else {
+  NULL
+}
+
+seq_len_lookup <- raw_df %>%
+  transmute(session, id, inter, seq_len)
+
+preds_all <- bind_rows(preds_ols, preds_trf) %>%
+  inner_join(seq_len_lookup, by = c("session", "id", "inter"))
+```
+
+```{r bucket-by-seqlen}
+simple_auc <- function(y, p) {
+  if (length(unique(y)) < 2) return(NA_real_)
+  pos <- p[y == 1]
+  neg <- p[y == 0]
+  mean(outer(pos, neg, ">")) + 0.5 * mean(outer(pos, neg, "=="))
+}
+
+by_len <- preds_all %>%
+  group_by(model_label, seq_len) %>%
+  summarise(
+    n_rounds = n(),
+    accuracy = mean((p >= 0.5) == y),
+    auc      = simple_auc(y, p),
+    .groups  = "drop"
+  ) %>%
+  filter(n_rounds >= 50)
+```
+
+```{r plot-acc-by-seqlen, fig.width=10, fig.height=4.5}
+ggplot(by_len, aes(x = seq_len, y = accuracy, color = model_label)) +
+  geom_point(aes(size = n_rounds), alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_size_continuous(labels = scales::comma) +
+  scale_color_manual(values = c("OLS (g, l, \u03b4)" = "steelblue",
+                                "Transformer (no-mask)" = "firebrick")) +
+  labs(x = "Supergame length (rounds)", y = "Accuracy",
+       size = "N rounds", color = "Model",
+       title = "Out-of-sample accuracy by supergame length") +
+  theme_bw(base_size = 13)
+
+ggsave("../figures/bootstrap_acc_by_seqlen.png", width = 10, height = 4.5)
+```
+
+```{r plot-auc-by-seqlen, fig.width=10, fig.height=4.5}
+ggplot(by_len %>% filter(!is.na(auc)),
+       aes(x = seq_len, y = auc, color = model_label)) +
+  geom_point(aes(size = n_rounds), alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  scale_size_continuous(labels = scales::comma) +
+  scale_color_manual(values = c("OLS (g, l, \u03b4)" = "steelblue",
+                                "Transformer (no-mask)" = "firebrick")) +
+  labs(x = "Supergame length (rounds)", y = "AUC",
+       size = "N rounds", color = "Model",
+       title = "Out-of-sample AUC by supergame length") +
+  theme_bw(base_size = 13)
+
+ggsave("../figures/bootstrap_auc_by_seqlen.png", width = 10, height = 4.5)
+```
+
+## Figure A — all rounds (incl. $t=0$, "no-mask")
+
+Models with no subject-level memory that predict every round, including
+the opening action.
+
+```{r build-figA}
+figA_models_levels <- c("OLS (g, l, \u03b4)", "Transformer (no-mask)")
+
+figA <- list()
+
+if (nrow(bs_baseline) > 0) {
+  figA$ols <- bs_baseline %>%
+    filter(feature_spec == "meta_only", model == "OLS") %>%
+    mutate(model_label = "OLS (g, l, \u03b4)") %>%
+    select(bootstrap_iter, model_label, test_accuracy, test_auc, test_log_loss)
+}
+
+if (!is.null(bs_neural)) {
+  figA$neu <- bs_neural %>%
+    mutate(model_label = recode(model, !!!neural_model_map)) %>%
+    filter(model_label == "Transformer (no-mask)") %>%
+    select(bootstrap_iter, model_label, test_accuracy, test_auc, test_log_loss)
+}
+
+figA_df <- bind_rows(figA) %>%
+  mutate(model_label = factor(model_label, levels = figA_models_levels))
+```
+
+```{r figA-table}
+figA_tbl <- figA_df %>%
+  group_by(model_label) %>%
+  summarise(
+    Accuracy = sprintf("%.2f%% [%.2f, %.2f]",
+                       median(test_accuracy) * 100,
+                       quantile(test_accuracy, 0.025) * 100,
+                       quantile(test_accuracy, 0.975) * 100),
+    AUC = sprintf("%.4f [%.4f, %.4f]",
+                  median(test_auc),
+                  quantile(test_auc, 0.025),
+                  quantile(test_auc, 0.975)),
+    NLL = sprintf("%.4f [%.4f, %.4f]",
+                  median(test_log_loss),
+                  quantile(test_log_loss, 0.025),
+                  quantile(test_log_loss, 0.975)),
+    .groups = "drop"
+  ) %>%
+  rename(Model = model_label)
+
+knitr::kable(figA_tbl, align = "lrrr", caption = "Figure A: test metrics, all rounds (incl. t=0)")
+```
+
+```{r figA-plot, fig.width=9, fig.height=4.5}
+figA_ci <- figA_df %>%
+  pivot_longer(c(test_accuracy, test_auc, test_log_loss),
+               names_to = "metric", values_to = "value") %>%
+  mutate(metric = recode(metric,
+    test_accuracy = "Accuracy", test_auc = "AUC", test_log_loss = "NLL")) %>%
+  group_by(model_label, metric) %>%
+  summarise(lo = quantile(value, 0.025),
+            med = median(value),
+            hi  = quantile(value, 0.975), .groups = "drop")
+
+ggplot(figA_ci, aes(x = model_label, y = med, color = model_label)) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), size = 0.5) +
+  facet_wrap(~ metric, scales = "free_y") +
+  labs(x = NULL, y = "Median + 95% CI",
+       title = "Figure A: out-of-sample metrics, all rounds (incl. t=0)") +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        legend.position = "none")
+
+ggsave("../figures/bootstrap_figA_ci.png", width = 9, height = 4.5)
+```
+
+## Figure B — rounds $t \ge 1$ only ("mask")
+
+OLS with joint $n$-gram history ($+$ last 1…5), Transformer with round-1
+labels masked, and IRL-SG (defaults & MLE) scored on the same $t \ge 1$
+rounds.
+
+```{r build-figB}
+figB_ngram_levels <- c(paste0("OLS (", spec_labels[2:6], ")"))
+figB_models_levels <- c(figB_ngram_levels, "Transformer (mask r1)",
+                        "IRL-SG (defaults)", "IRL-SG (MLE)")
+
+figB <- list()
+
+if (nrow(bs_baseline) > 0) {
+  figB$ols <- bs_baseline %>%
+    filter(feature_spec %in% paste0("meta_hist_", 1:5), model == "OLS") %>%
+    mutate(model_label = paste0("OLS (", as.character(feature_label), ")")) %>%
+    select(bootstrap_iter, model_label, test_accuracy, test_auc, test_log_loss)
+}
+
+if (!is.null(bs_neural)) {
+  figB$neu <- bs_neural %>%
+    mutate(model_label = recode(model, !!!neural_model_map)) %>%
+    filter(model_label == "Transformer (mask r1)") %>%
+    select(bootstrap_iter, model_label, test_accuracy, test_auc, test_log_loss)
+}
+
+if (!is.null(bs_irl)) {
+  figB$irl <- bs_irl %>%
+    filter(model %in% c("irl_sg_mask_r1", "irl_sg_mle_mask_r1")) %>%
+    mutate(model_label = recode(model, !!!irl_model_map)) %>%
+    select(bootstrap_iter, model_label, test_accuracy, test_auc, test_log_loss)
+}
+
+figB_df <- bind_rows(figB) %>%
+  mutate(model_label = factor(model_label, levels = figB_models_levels))
+```
+
+```{r figB-table}
+figB_tbl <- figB_df %>%
+  group_by(model_label) %>%
+  summarise(
+    Accuracy = sprintf("%.2f%% [%.2f, %.2f]",
+                       median(test_accuracy) * 100,
+                       quantile(test_accuracy, 0.025) * 100,
+                       quantile(test_accuracy, 0.975) * 100),
+    AUC = sprintf("%.4f [%.4f, %.4f]",
+                  median(test_auc),
+                  quantile(test_auc, 0.025),
+                  quantile(test_auc, 0.975)),
+    NLL = sprintf("%.4f [%.4f, %.4f]",
+                  median(test_log_loss),
+                  quantile(test_log_loss, 0.025),
+                  quantile(test_log_loss, 0.975)),
+    .groups = "drop"
+  ) %>%
+  rename(Model = model_label)
+
+knitr::kable(figB_tbl, align = "lrrr", caption = "Figure B: test metrics, rounds t >= 1 only")
+```
+
+```{r figB-plot, fig.width=10, fig.height=4.5}
+figB_ci <- figB_df %>%
+  pivot_longer(c(test_accuracy, test_auc, test_log_loss),
+               names_to = "metric", values_to = "value") %>%
+  mutate(metric = recode(metric,
+    test_accuracy = "Accuracy", test_auc = "AUC", test_log_loss = "NLL")) %>%
+  group_by(model_label, metric) %>%
+  summarise(lo = quantile(value, 0.025),
+            med = median(value),
+            hi  = quantile(value, 0.975), .groups = "drop")
+
+ggplot(figB_ci, aes(x = model_label, y = med, color = model_label)) +
+  geom_pointrange(aes(ymin = lo, ymax = hi), size = 0.5) +
+  facet_wrap(~ metric, scales = "free_y") +
+  labs(x = NULL, y = "Median + 95% CI",
+       title = "Figure B: out-of-sample metrics, rounds t >= 1 only") +
+  theme_bw(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
+        legend.position = "none")
+
+ggsave("../figures/bootstrap_figB_ci.png", width = 10, height = 4.5)
+```
+
+## Pairwise differences: does more history help? (Figure B models)
+
+For each bootstrap iteration we compute the difference in test accuracy
+between adjacent OLS $n$-gram specs. If the 95% CI excludes zero, the
+improvement is robust.
+
+```{r pairwise-diffs, fig.width=10, fig.height=5}
+spec_pairs <- tibble(
+  from  = spec_labels[1:5],
+  to    = spec_labels[2:6],
+  label = paste(spec_labels[2:6], "vs", spec_labels[1:5])
+)
+
+diffs <- list()
+bs_ols <- bs_baseline %>% filter(model == "OLS")
+for (i in seq_len(nrow(spec_pairs))) {
+  d <- bs_ols %>%
+    filter(feature_label %in% c(spec_pairs$from[i], spec_pairs$to[i])) %>%
+    select(bootstrap_iter, feature_label, test_accuracy) %>%
+    pivot_wider(names_from = feature_label, values_from = test_accuracy)
+  if (ncol(d) < 3) next
+  d$diff <- d[[spec_pairs$to[i]]] - d[[spec_pairs$from[i]]]
+  diffs[[i]] <- tibble(comparison = spec_pairs$label[i], diff = d$diff)
+}
+diff_df <- bind_rows(diffs) %>%
+  mutate(comparison = factor(comparison, levels = spec_pairs$label))
+
+ggplot(diff_df, aes(x = diff)) +
+  geom_histogram(bins = 40, fill = "steelblue", alpha = 0.7) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_wrap(~ comparison, scales = "free") +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 0.01)) +
+  labs(x = "Accuracy difference", y = "Count",
+       title = "Pairwise accuracy gains from additional history (OLS)") +
+  theme_bw(base_size = 11)
+
+ggsave("../figures/bootstrap_pairwise_diffs.png", width = 10, height = 5)
+```
+
+```{r pairwise-ci-table}
+diff_ci <- diff_df %>%
+  group_by(comparison) %>%
+  summarise(
+    lo  = quantile(diff, 0.025),
+    med = median(diff),
+    hi  = quantile(diff, 0.975),
+    pct_positive = mean(diff > 0),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    CI = sprintf("%.3f%% [%.3f, %.3f]", med * 100, lo * 100, hi * 100),
+    `Pr(>0)` = sprintf("%.1f%%", pct_positive * 100)
+  ) %>%
+  select(Comparison = comparison, `Median diff (CI)` = CI, `Pr(>0)`)
+
+knitr::kable(diff_ci, align = "lrr")
+```
+
+## IRL-SG: defaults vs MLE (scoring scopes side by side)
+
+We score the same IRL-SG parameters in two ways: on all rounds (incl.
+$t=0$, where the $\sigma(\alpha + \beta \Delta_{RD} + e_i)$ initial-round
+logit + subject experience term contribute) and on $t \ge 1$ only (just
+the Markov-1 transitions). The gap tells you how much of IRL-SG's
+aggregate performance is driven by its initial-round component.
+
+```{r irl-scope-table, eval=!is.null(bs_irl)}
+irl_scope <- bs_irl %>%
+  mutate(
+    scope = if_else(grepl("mask_r1$", model), "t \u2265 1 only", "all rounds (incl. t=0)"),
+    variant = case_when(
+      grepl("mle", model)  ~ "IRL-SG (MLE)",
+      TRUE                 ~ "IRL-SG (defaults)"
+    )
+  ) %>%
+  group_by(variant, scope) %>%
+  summarise(
+    Accuracy = sprintf("%.2f%% [%.2f, %.2f]",
+                       median(test_accuracy) * 100,
+                       quantile(test_accuracy, 0.025) * 100,
+                       quantile(test_accuracy, 0.975) * 100),
+    AUC = sprintf("%.4f [%.4f, %.4f]",
+                  median(test_auc),
+                  quantile(test_auc, 0.025),
+                  quantile(test_auc, 0.975)),
+    NLL = sprintf("%.4f [%.4f, %.4f]",
+                  median(test_log_loss),
+                  quantile(test_log_loss, 0.025),
+                  quantile(test_log_loss, 0.975)),
+    .groups = "drop"
+  )
+
+knitr::kable(irl_scope, align = "llrrr")
+```
+
+```{r irl-mle-vs-defaults, eval=!is.null(bs_irl)}
+mle_col <- "irl_sg_mle_mask_r1"
+def_col <- "irl_sg_mask_r1"
+if (mle_col %in% bs_irl$model && def_col %in% bs_irl$model) {
+  irl_wide <- bs_irl %>%
+    filter(model %in% c(mle_col, def_col)) %>%
+    select(bootstrap_iter, model, test_accuracy, test_auc, test_log_loss) %>%
+    pivot_wider(names_from = model, values_from = c(test_accuracy, test_auc, test_log_loss))
+
+  qfmt <- function(x) sprintf("%.4f [%.4f, %.4f]", median(x), quantile(x, 0.025), quantile(x, 0.975))
+
+  irl_diff <- tibble(
+    Metric = c("Accuracy", "AUC", "NLL"),
+    `MLE - Defaults (95% CI), t >= 1` = c(
+      qfmt(irl_wide[[paste0("test_accuracy_", mle_col)]] - irl_wide[[paste0("test_accuracy_", def_col)]]),
+      qfmt(irl_wide[[paste0("test_auc_", mle_col)]]      - irl_wide[[paste0("test_auc_", def_col)]]),
+      qfmt(irl_wide[[paste0("test_log_loss_", mle_col)]] - irl_wide[[paste0("test_log_loss_", def_col)]])
+    )
+  )
+  knitr::kable(irl_diff, align = "lr")
+}
+```

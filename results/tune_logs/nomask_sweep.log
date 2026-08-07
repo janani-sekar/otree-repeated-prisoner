@@ -1,0 +1,85 @@
+=== Sweep started Thu Apr 23 13:55:59 CDT 2026 ===
+
+
+>>> RUN: baseline  args: 
+Device: mps
+mask_r1: False
+64,824 sequences loaded
+Train sessions: 116, Test sessions: 45
+Train rounds: 169,466, Test rounds: 62,832
+
+Training transformer_full ...
+  lr=0.0005 patience=5 min_delta=0.0001 max_epochs=100 weight_decay=0.0 warmup_frac=0.0 label_smoothing=0.0
+  epoch 1: train=0.3939 val=0.3905 lr=5.00e-04
+  epoch 2: train=0.3899 val=0.3887 lr=5.00e-04
+  epoch 3: train=0.3873 val=0.3875 lr=5.00e-04
+  epoch 4: train=0.3868 val=0.3885 lr=5.00e-04
+  epoch 5: train=0.3872 val=0.3882 lr=5.00e-04
+  epoch 6: train=0.3865 val=0.3871 lr=5.00e-04
+  epoch 7: train=0.3867 val=0.3866 lr=5.00e-04
+  epoch 8: train=0.3860 val=0.3860 lr=5.00e-04
+  epoch 9: train=0.3855 val=0.3864 lr=5.00e-04
+  epoch 10: train=0.3854 val=0.3853 lr=5.00e-04
+  epoch 11: train=0.3844 val=0.3859 lr=5.00e-04
+  epoch 12: train=0.3849 val=0.3856 lr=5.00e-04
+  epoch 13: train=0.3841 val=0.3869 lr=5.00e-04
+  epoch 14: train=0.3839 val=0.3876 lr=5.00e-04
+  epoch 15: train=0.3853 val=0.3858 lr=5.00e-04
+  transformer_full: acc=0.8096 auc=0.9010 nll=0.3668
+(tune mode: skipping bootstrap and per-round CSV dump)
+
+
+>>> RUN: longer  args: --patience 10 --min-delta 1e-5 --max-epochs 60
+Device: mps
+mask_r1: False
+64,824 sequences loaded
+Train sessions: 116, Test sessions: 45
+Train rounds: 169,466, Test rounds: 62,832
+
+Training transformer_full ...
+  lr=0.0005 patience=10 min_delta=1e-05 max_epochs=60 weight_decay=0.0 warmup_frac=0.0 label_smoothing=0.0
+  epoch 1: train=0.3936 val=0.3901 lr=5.00e-04
+  epoch 2: train=0.3893 val=0.3879 lr=5.00e-04
+  epoch 3: train=0.3874 val=0.3883 lr=5.00e-04
+  epoch 4: train=0.3867 val=0.3890 lr=5.00e-04
+  epoch 5: train=0.3872 val=0.3883 lr=5.00e-04
+  epoch 6: train=0.3865 val=0.3863 lr=5.00e-04
+  epoch 7: train=0.3866 val=0.3871 lr=5.00e-04
+  epoch 8: train=0.3857 val=0.3861 lr=5.00e-04
+  epoch 9: train=0.3854 val=0.3863 lr=5.00e-04
+  epoch 10: train=0.3854 val=0.3851 lr=5.00e-04
+  epoch 11: train=0.3842 val=0.3863 lr=5.00e-04
+  epoch 12: train=0.3848 val=0.3860 lr=5.00e-04
+  epoch 13: train=0.3840 val=0.3875 lr=5.00e-04
+  epoch 14: train=0.3837 val=0.3877 lr=5.00e-04
+  epoch 15: train=0.3848 val=0.3850 lr=5.00e-04
+  epoch 16: train=0.3842 val=0.3846 lr=5.00e-04
+  epoch 17: train=0.3839 val=0.3846 lr=5.00e-04
+  epoch 18: train=0.3839 val=0.3861 lr=5.00e-04
+  epoch 19: train=0.3848 val=0.3859 lr=5.00e-04
+  epoch 20: train=0.3835 val=0.3854 lr=5.00e-04
+  epoch 21: train=0.3825 val=0.3847 lr=5.00e-04
+  epoch 22: train=0.3827 val=0.3843 lr=5.00e-04
+  epoch 23: train=0.3825 val=0.3867 lr=5.00e-04
+  epoch 24: train=0.3816 val=0.3845 lr=5.00e-04
+  epoch 25: train=0.3830 val=0.3868 lr=5.00e-04
+  epoch 26: train=0.3822 val=0.3846 lr=5.00e-04
+  epoch 27: train=0.3823 val=0.3863 lr=5.00e-04
+  epoch 28: train=0.3823 val=0.3864 lr=5.00e-04
+  epoch 29: train=0.3818 val=0.3903 lr=5.00e-04
+  epoch 30: train=0.3823 val=0.3863 lr=5.00e-04
+  epoch 31: train=0.3815 val=0.3857 lr=5.00e-04
+  epoch 32: train=0.3814 val=0.3845 lr=5.00e-04
+  transformer_full: acc=0.8104 auc=0.9019 nll=0.3659
+(tune mode: skipping bootstrap and per-round CSV dump)
+
+
+>>> RUN: warmup_adamw  args: --lr 1e-3 --warmup-frac 0.05 --weight-decay 1e-4 --patience 10 --min-delta 1e-5 --max-epochs 60
+Device: mps
+mask_r1: False
+64,824 sequences loaded
+Train sessions: 116, Test sessions: 45
+Train rounds: 169,466, Test rounds: 62,832
+
+Training transformer_full ...
+  lr=0.001 patience=10 min_delta=1e-05 max_epochs=60 weight_decay=0.0001 warmup_frac=0.05 label_smoothing=0.0
